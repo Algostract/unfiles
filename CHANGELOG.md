@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.5
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.4...v0.1.5)
+
+### 🚀 Enhancements
+
+- Add p-queue dependency and implement queue for media processing ([1c4391f](https://github.com/algostract/unfiles/commit/1c4391f))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.4
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.3...v0.1.4)

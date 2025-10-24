@@ -1,6 +1,6 @@
 {
   "name": "unfiles",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Universal file uploads with built‑in transforms and CDN delivery for any runtime.",
   "author": "Shirsendu Bairagi <shirsendu2001@gmail.com>",
   "license": "MIT",

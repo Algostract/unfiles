@@ -45,6 +45,19 @@ function normalizeArgs(rawArgs: string) {
   return normArgs
 }
 
+// Simple helper honoring q=0 exclusions
+const disabledMimeType = (mime: string, accept: string) => {
+  return accept
+    .split(',')
+    .map((p) => p.trim())
+    .some((p) => p.startsWith(mime) && /;q=0(\.0+)?\b/.test(p))
+}
+const supportsMimeType = (mime: string, accept: string) => {
+  if (!accept) return false
+  if (disabledMimeType(mime, accept)) return false
+  return accept.includes(mime)
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const r2 = useStorage('r2')
@@ -65,17 +78,31 @@ export default defineEventHandler(async (event) => {
   const modifiers = await parseIpxArgs(normArgs)
   // console.log('⚙️  Modifiers', modifiers)
 
-  const format = modifiers.format || 'avif'
+  setResponseHeader(event, 'Vary', 'Accept')
+  setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet') // Instruct crawlers not to index this redirecting URL
+  setResponseHeader(event, 'Cache-Control', 'no-store, private') // Optional: avoid caching the redirect response
+
+  if (!modifiers.format) {
+    const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
+
+    // Negotiate best-supported format
+    let negotiated: 'avif' | 'webp' | 'jpeg' | undefined
+    if (supportsMimeType('image/avif', accept)) negotiated = 'avif'
+    else if (supportsMimeType('image/webp', accept)) negotiated = 'webp'
+    else if (accept.includes('image/*') || accept.includes('*/*') || accept.includes('image/')) negotiated = 'jpeg'
+
+    modifiers.format = negotiated || 'jpeg'
+  }
 
   const cacheHash = hash({ src: source, args: normArgs })
-  const cacheKey = `cache/${cacheHash}.${format}`
+  const cacheKey = `cache/${cacheHash}.${modifiers.format}`
 
   if (await r2.hasItem(cacheKey)) {
     console.log('✅ Cache HIT', { cacheKey })
-    return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`)
+    return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
   }
-  console.log('⚠️ Cache MISS', { cacheKey })
 
+  console.log('⚠️ Cache MISS', { cacheKey })
   const nameToPathMap = await syncDrive()
   const mappedSource = nameToPathMap[source]
 
@@ -96,5 +123,5 @@ export default defineEventHandler(async (event) => {
   await fs.removeItem(source)
   console.log('💾 Saved to cache', { cacheKey, bytes: data.byteLength })
 
-  return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`)
+  return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
 })

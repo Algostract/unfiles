@@ -30,14 +30,17 @@ const syncDrive = defineCachedFunction(
       region: config.cloudreveR2Region || 'auto',
     })
 
-    for (const key of allItemKeys) {
-      const [_, ...b] = key.split('_')
-      nameToPathMap[b.join('_')] = key
+    for (const path of allItemKeys) {
+      const [_, ...b] = path.split('_')
+      if (b.at(-1) === 'thumb') continue
+
+      const key = b.join('_').split('.').slice(0, -1).join('.')
+      nameToPathMap[key] = path
     }
 
     return nameToPathMap
   },
-  { maxAge: 60 }
+  { maxAge: 60 * 5 }
 )
 
 function normalizeArgs(rawArgs: string) {
@@ -73,28 +76,17 @@ export default defineEventHandler(async (event) => {
   const modifiers = await parseIpxArgs(normArgs)
   console.log('⚙️  Modifiers', modifiers)
 
-  const fmt = modifiers.format || 'avif'
+  const format = modifiers.format || 'avif'
 
   const cacheHash = hash({ src: source, args: normArgs })
-  const cacheKey = `cache/${cacheHash}.${fmt}`
+  const cacheKey = `cache/${cacheHash}.${format}`
   console.log('🗝️  Cache key', { cacheKey })
 
   if (await r2.hasItem(cacheKey)) {
     const cached = await r2.getItemRaw(cacheKey)
     if (cached) {
       const bytes = new Uint8Array(cached as ArrayBuffer)
-      const mime: Record<string, string> = {
-        avif: 'image/avif',
-        webp: 'image/webp',
-        jpeg: 'image/jpeg',
-        jpg: 'image/jpeg',
-        png: 'image/png',
-        gif: 'image/gif',
-        heif: 'image/heif',
-        tiff: 'image/tiff',
-        svg: 'image/svg+xml',
-      }
-      const ct = mime[fmt] || 'application/octet-stream'
+      const ct = mime[format] || 'application/octet-stream'
       setHeader(event, 'Content-Type', ct)
       setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
       setHeader(event, 'Content-Length', bytes.byteLength)
@@ -125,7 +117,7 @@ export default defineEventHandler(async (event) => {
     console.log('💾 Saved to cache', { cacheKey, bytes: data.byteLength })
   })()
 
-  const ct = mime[fmt] || 'application/octet-stream'
+  const ct = mime[format] || 'application/octet-stream'
   setHeader(event, 'Content-Type', ct)
   setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
   setHeader(event, 'Content-Length', data.byteLength)

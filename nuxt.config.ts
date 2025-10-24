@@ -55,7 +55,7 @@ export default defineNuxtConfig({
     '@regle/nuxt',
     '@vite-pwa/nuxt',
     '@vueuse/nuxt',
-    'nuxt-auth-utils',
+    // 'nuxt-auth-utils',
     // 'nuxt-nodemailer',
   ],
   nitro: {

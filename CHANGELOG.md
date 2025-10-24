@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.1
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.0...v0.1.1)
+
+### 🚀 Enhancements
+
+- Enhance media route with MIME type support and response headers ([5756925](https://github.com/algostract/unfiles/commit/5756925))
+
+### 💅 Refactors
+
+- Streamline cache handling and update redirect URL configuration ([73d1ff4](https://github.com/algostract/unfiles/commit/73d1ff4))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.0
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.0.1...v0.1.0)

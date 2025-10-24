@@ -1,5 +1,18 @@
 import { createIPX, ipxFSStorage } from 'ipx'
 import { hash } from 'ohash'
+import PQueue from 'p-queue'
+
+const formatMime = {
+  avif: 'image/avif',
+  webp: 'image/webp',
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  heif: 'image/heif',
+  tiff: 'image/tiff',
+  svg: 'image/svg+xml',
+}
 
 const ipx = createIPX({
   storage: ipxFSStorage({ dir: './static' }),
@@ -31,6 +44,8 @@ const syncDrive = defineCachedFunction(
   { swr: true, staleMaxAge: 60 * 5, maxAge: 86400 }
 )
 
+const queue = new PQueue({ concurrency: 2 })
+
 function normalizeArgs(rawArgs: string) {
   const decodedArgs = decodeURIComponent(rawArgs || '')
     .replace(/%2C/gi, ',')
@@ -58,7 +73,7 @@ const supportsMimeType = (mime: string, accept: string) => {
   return accept.includes(mime)
 }
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler<Promise<Buffer>>(async (event) => {
   console.time('transform-total')
   const cloudreveR2 = useStorage('cloudreveR2')
   const r2 = useStorage('r2')
@@ -85,28 +100,29 @@ export default defineEventHandler(async (event) => {
     else if (accept.includes('image/*') || accept.includes('*/*') || accept.includes('image/')) negotiated = 'jpeg'
     modifiers.format = negotiated || 'jpeg'
   }
-
-  setResponseHeader(event, 'Vary', 'Accept')
+  const format = modifiers.format as keyof typeof formatMime
+  setResponseHeader(event, 'Content-Type', formatMime[format] ?? 'application/octet-stream')
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
   setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
-  setResponseHeader(event, 'Content-Type', `image/${modifiers.format}`)
+  setResponseHeader(event, 'Vary', 'Accept')
 
   const cacheHash = hash({ src: source, args: normArgs })
-  const cacheKey = `cache/${cacheHash}.${modifiers.format}`
+  const cacheKey = `cache/${cacheHash}.${format}`
 
   if (await fs.hasItem(cacheKey)) {
-    console.log('✅ FS Cache HIT', { cacheKey })
-    const data = await fs.getItemRaw<ArrayBuffer>(cacheKey)
+    const data = Buffer.from((await fs.getItemRaw<ArrayBuffer>(cacheKey))!)
 
+    console.log('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
     console.timeEnd('transform-total')
     // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
     return data
   }
 
   if (await r2.hasItem(cacheKey)) {
-    console.log('✅ R2 Cache HIT', { cacheKey })
-    const data = (await r2.getItemRaw<ArrayBuffer>(cacheKey))!
-    fs.setItemRaw(cacheKey, Buffer.from(data)).then(() => {
+    const data = Buffer.from((await r2.getItemRaw<ArrayBuffer>(cacheKey))!)
+
+    console.log('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
+    fs.setItemRaw(cacheKey, data).then(() => {
       console.log('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
     })
 
@@ -119,27 +135,29 @@ export default defineEventHandler(async (event) => {
   if (!mappedSource) {
     throw createError({ statusCode: 404, statusMessage: 'Missing media' })
   }
-  console.log('⚠️ Cache MISS', { cacheKey })
 
-  // console.log('🛠️ Transform START', { source, modifiers })
-  await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
+  return await queue.add(async () => {
+    console.log('⚠️ Cache MISS', { cacheKey })
+    // console.log('🛠️ Transform START', { source, modifiers })
+    await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
 
-  const { data } = await ipx(source, modifiers).process()
-  await fs.removeItem(source)
+    const { data } = await ipx(source, modifiers).process()
+    await fs.removeItem(source)
 
-  if (typeof data == 'string') {
-    throw createError({ statusCode: 404, statusMessage: 'Data is string' })
-  }
-  // console.log('📦 Transform DONE', { bytes: data.byteLength })
+    if (typeof data == 'string') {
+      throw createError({ statusCode: 404, statusMessage: 'Data is string' })
+    }
+    // console.log('📦 Transform DONE', { cacheKey, bytes: data.byteLength })
 
-  fs.setItemRaw(cacheKey, data).then(async () => {
-    console.log('💾 Saved to FS cache', { cacheKey })
+    fs.setItemRaw(cacheKey, data).then(async () => {
+      console.log('💾 Saved to FS cache', { cacheKey })
+    })
+    r2.setItemRaw(cacheKey, data).then(async () => {
+      console.log('💾 Saved to R2 cache', { cacheKey })
+    })
+
+    console.timeEnd('transform-total')
+    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+    return data
   })
-  r2.setItemRaw(cacheKey, data).then(async () => {
-    console.log('💾 Saved to R2 cache', { cacheKey })
-  })
-
-  console.timeEnd('transform-total')
-  // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
-  return data
 })

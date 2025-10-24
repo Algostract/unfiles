@@ -3,9 +3,9 @@ import { AwsClient } from 'aws4fetch'
 type R2Config = {
   accessKeyId: string
   secretAccessKey: string
-  endpoint: string // e.g. https://<account_id>.r2.cloudflarestorage.com
+  endpoint: string
   bucket: string
-  region?: string // for R2: 'auto' (or 'us-east-1' alias)
+  region?: string // for R2: 'auto'
 }
 
 export function makeAwsClient(cfg: R2Config) {

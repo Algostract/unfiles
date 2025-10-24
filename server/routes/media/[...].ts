@@ -40,7 +40,7 @@ const syncDrive = defineCachedFunction(
 
     return nameToPathMap
   },
-  { maxAge: 60 * 5 }
+  { swr: true, staleMaxAge: 60 * 7, maxAge: 60 * 10 }
 )
 
 function normalizeArgs(rawArgs: string) {
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
   const fs = useStorage('fs')
 
   const raw = event.context.params?._ || ''
-  console.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
+  // console.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
 
   const [rawArgs, source] = raw.split('/')
   if (!source) {
@@ -71,29 +71,23 @@ export default defineEventHandler(async (event) => {
   }
 
   const normArgs = normalizeArgs(rawArgs)
-  console.log('🧩 Parames', { source, rawArgs, normArgs })
+  // console.log('🧩 Parames', { source, rawArgs, normArgs })
 
   const modifiers = await parseIpxArgs(normArgs)
-  console.log('⚙️  Modifiers', modifiers)
+  // console.log('⚙️  Modifiers', modifiers)
 
   const format = modifiers.format || 'avif'
 
   const cacheHash = hash({ src: source, args: normArgs })
   const cacheKey = `cache/${cacheHash}.${format}`
-  console.log('🗝️  Cache key', { cacheKey })
 
   if (await r2.hasItem(cacheKey)) {
-    const cached = await r2.getItemRaw(cacheKey)
-    if (cached) {
-      const bytes = new Uint8Array(cached as ArrayBuffer)
-      const ct = mime[format] || 'application/octet-stream'
-      setHeader(event, 'Content-Type', ct)
-      setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-      setHeader(event, 'Content-Length', bytes.byteLength)
-      console.log('✅ Cache HIT', { bytes: bytes.byteLength, ct })
-      return bytes
-    }
+    console.log('✅ Cache HIT', { cacheKey })
+    const bucketBaseUrl = 'https://cdn.bucket.redcatpictures.com'
+    await sendRedirect(event, `${bucketBaseUrl}/${cacheKey}`)
+    return
   }
+  console.log('⚠️ Cache MISS', { cacheKey })
 
   const nameToPathMap = await syncDrive()
   const mappedSource = nameToPathMap[source]
@@ -104,13 +98,13 @@ export default defineEventHandler(async (event) => {
 
   await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
 
-  console.log('🛠️ Transform START', { source, modifiers })
+  // console.log('🛠️ Transform START', { source, modifiers })
   const { data } = await ipx(source, modifiers).process()
 
   if (typeof data == 'string') {
     throw createError({ statusCode: 404, statusMessage: 'Data is string' })
   }
-  console.log('📦 Transform DONE', { bytes: data.byteLength })
+  // console.log('📦 Transform DONE', { bytes: data.byteLength })
   ;(async () => {
     await r2.setItemRaw(cacheKey, data)
     await fs.removeItem(source)

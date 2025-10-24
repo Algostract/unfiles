@@ -6,15 +6,23 @@ services:
       - .env
     volumes:
       - unfiles_data:/app/.data
+      - unfiles_static:/app/static
     expose:
       - 3000
     networks:
       - internal
     deploy:
-      replicas: 1
+      replicas: 2
       restart_policy:
         condition: on-failure
         max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.4' # hard cap: half a CPU core
+          memory: 768M # hard cap: 512 MiB
+        reservations:
+          cpus: '0.2' # soft guarantee: quarter core
+          memory: 512M # soft guarantee: 256 MiB
 
 volumes:
   unfiles_data:
@@ -23,6 +31,12 @@ volumes:
       type: none
       o: bind
       device: /root/unfiles/.data
+  unfiles_static:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /root/unfiles/static
 
 networks:
   internal:

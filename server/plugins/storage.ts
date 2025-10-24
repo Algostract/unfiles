@@ -16,7 +16,6 @@ export default defineNitroPlugin(() => {
   // Mount driver
   storage.mount('r2', driver)
 
-
   // Dynamically pass in credentials from runtime configuration, or other sources
   const cloudreveDriver = s3Driver({
     accessKeyId: config.cloudreveR2AccessKeyId,

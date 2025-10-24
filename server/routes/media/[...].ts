@@ -74,33 +74,29 @@ export default defineEventHandler(async (event) => {
 
   const normArgs = normalizeArgs(rawArgs)
   // console.log('🧩 Parames', { source, rawArgs, normArgs })
-
   const modifiers = await parseIpxArgs(normArgs)
   // console.log('⚙️  Modifiers', modifiers)
 
-  setResponseHeader(event, 'Vary', 'Accept')
-  setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet') // Instruct crawlers not to index this redirecting URL
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
-  setResponseHeader(event, 'Content-Type', `image/${modifiers.format}`)
-
   if (!modifiers.format) {
     const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
-
-    // Negotiate best-supported format
-    let negotiated: 'avif' | 'webp' | 'jpeg' | undefined
+    let negotiated
     if (supportsMimeType('image/avif', accept)) negotiated = 'avif'
     else if (supportsMimeType('image/webp', accept)) negotiated = 'webp'
     else if (accept.includes('image/*') || accept.includes('*/*') || accept.includes('image/')) negotiated = 'jpeg'
-
     modifiers.format = negotiated || 'jpeg'
   }
+
+  setResponseHeader(event, 'Vary', 'Accept')
+  setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
+  setResponseHeader(event, 'Content-Type', `image/${modifiers.format}`)
 
   const cacheHash = hash({ src: source, args: normArgs })
   const cacheKey = `cache/${cacheHash}.${modifiers.format}`
 
   if (await fs.hasItem(cacheKey)) {
     console.log('✅ FS Cache HIT', { cacheKey })
-    const data = await fs.getItemRaw(cacheKey)
+    const data = await fs.getItemRaw<ArrayBuffer>(cacheKey)
 
     console.timeEnd('transform-total')
     // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
@@ -110,7 +106,7 @@ export default defineEventHandler(async (event) => {
   if (await r2.hasItem(cacheKey)) {
     console.log('✅ R2 Cache HIT', { cacheKey })
     const data = (await r2.getItemRaw<ArrayBuffer>(cacheKey))!
-    fs.setItemRaw(source, Buffer.from(data)).then(() => {
+    fs.setItemRaw(cacheKey, Buffer.from(data)).then(() => {
       console.log('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
     })
 
@@ -123,22 +119,25 @@ export default defineEventHandler(async (event) => {
   if (!mappedSource) {
     throw createError({ statusCode: 404, statusMessage: 'Missing media' })
   }
-
   console.log('⚠️ Cache MISS', { cacheKey })
 
   // console.log('🛠️ Transform START', { source, modifiers })
-  await fs.setItemRaw(cacheKey, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
-  const { data } = await ipx(cacheKey, modifiers).process()
+  await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
+
+  const { data } = await ipx(source, modifiers).process()
+  await fs.removeItem(source)
 
   if (typeof data == 'string') {
     throw createError({ statusCode: 404, statusMessage: 'Data is string' })
   }
   // console.log('📦 Transform DONE', { bytes: data.byteLength })
 
-  r2.setItemRaw(cacheKey, data).then(() => {
-    console.log('💾 Saved to FS & R2 cache', { cacheKey, bytes: data.byteLength })
+  fs.setItemRaw(cacheKey, data).then(async () => {
+    console.log('💾 Saved to FS cache', { cacheKey })
   })
-  // fs.removeItem(cacheKey)
+  r2.setItemRaw(cacheKey, data).then(async () => {
+    console.log('💾 Saved to R2 cache', { cacheKey })
+  })
 
   console.timeEnd('transform-total')
   // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)

@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.0
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.0.1...v0.1.0)
+
+### 🚀 Enhancements
+
+- ⚠️ Enhance docker-compose configuration and improve resource management ([2a0f7e2](https://github.com/algostract/unfiles/commit/2a0f7e2))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Enhance docker-compose configuration and improve resource management ([2a0f7e2](https://github.com/algostract/unfiles/commit/2a0f7e2))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.0.1
 
 ### 🚀 Enhancements

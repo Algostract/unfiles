@@ -28,7 +28,7 @@ const syncDrive = defineCachedFunction(
 
     return nameToPathMap
   },
-  { swr: true, staleMaxAge: 60 * 7, maxAge: 60 * 10 }
+  { swr: true, staleMaxAge: 60 * 5, maxAge: 86400 }
 )
 
 function normalizeArgs(rawArgs: string) {
@@ -45,13 +45,13 @@ function normalizeArgs(rawArgs: string) {
   return normArgs
 }
 
-// Simple helper honoring q=0 exclusions
 const disabledMimeType = (mime: string, accept: string) => {
   return accept
     .split(',')
     .map((p) => p.trim())
     .some((p) => p.startsWith(mime) && /;q=0(\.0+)?\b/.test(p))
 }
+
 const supportsMimeType = (mime: string, accept: string) => {
   if (!accept) return false
   if (disabledMimeType(mime, accept)) return false
@@ -59,9 +59,9 @@ const supportsMimeType = (mime: string, accept: string) => {
 }
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const r2 = useStorage('r2')
+  console.time('transform-total')
   const cloudreveR2 = useStorage('cloudreveR2')
+  const r2 = useStorage('r2')
   const fs = useStorage('fs')
 
   const raw = event.context.params?._ || ''
@@ -80,7 +80,7 @@ export default defineEventHandler(async (event) => {
 
   setResponseHeader(event, 'Vary', 'Accept')
   setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet') // Instruct crawlers not to index this redirecting URL
-  setResponseHeader(event, 'Cache-Control', 'no-store, private') // Optional: avoid caching the redirect response
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
 
   if (!modifiers.format) {
     const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
@@ -97,31 +97,49 @@ export default defineEventHandler(async (event) => {
   const cacheHash = hash({ src: source, args: normArgs })
   const cacheKey = `cache/${cacheHash}.${modifiers.format}`
 
-  if (await r2.hasItem(cacheKey)) {
-    console.log('✅ Cache HIT', { cacheKey })
-    return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+  if (await fs.hasItem(cacheKey)) {
+    console.log('✅ FS Cache HIT', { cacheKey })
+    const data = await fs.getItemRaw(cacheKey)
+
+    console.timeEnd('transform-total')
+    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+    return data
   }
 
-  console.log('⚠️ Cache MISS', { cacheKey })
-  const nameToPathMap = await syncDrive()
-  const mappedSource = nameToPathMap[source]
+  if (await r2.hasItem(cacheKey)) {
+    console.log('✅ R2 Cache HIT', { cacheKey })
+    const data = (await r2.getItemRaw<ArrayBuffer>(cacheKey))!
+    fs.setItemRaw(source, Buffer.from(data)).then(() => {
+      console.log('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+    })
 
+    console.timeEnd('transform-total')
+    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+    return data
+  }
+
+  const mappedSource = (await syncDrive())[source]
   if (!mappedSource) {
     throw createError({ statusCode: 404, statusMessage: 'Missing media' })
   }
 
+  console.log('⚠️ Cache MISS', { cacheKey })
+
   // console.log('🛠️ Transform START', { source, modifiers })
-  await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
-  const { data } = await ipx(source, modifiers).process()
+  await fs.setItemRaw(cacheKey, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
+  const { data } = await ipx(cacheKey, modifiers).process()
 
   if (typeof data == 'string') {
     throw createError({ statusCode: 404, statusMessage: 'Data is string' })
   }
   // console.log('📦 Transform DONE', { bytes: data.byteLength })
 
-  await r2.setItemRaw(cacheKey, data)
-  await fs.removeItem(source)
-  console.log('💾 Saved to cache', { cacheKey, bytes: data.byteLength })
+  r2.setItemRaw(cacheKey, data).then(() => {
+    console.log('💾 Saved to FS & R2 cache', { cacheKey, bytes: data.byteLength })
+  })
+  // fs.removeItem(cacheKey)
 
-  return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+  console.timeEnd('transform-total')
+  // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
+  return data
 })

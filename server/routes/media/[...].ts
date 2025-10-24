@@ -1,18 +1,6 @@
 import { createIPX, ipxFSStorage } from 'ipx'
 import { hash } from 'ohash'
 
-const mime: Record<string, string> = {
-  avif: 'image/avif',
-  webp: 'image/webp',
-  jpeg: 'image/jpeg',
-  jpg: 'image/jpeg',
-  png: 'image/png',
-  gif: 'image/gif',
-  heif: 'image/heif',
-  tiff: 'image/tiff',
-  svg: 'image/svg+xml',
-}
-
 const ipx = createIPX({
   storage: ipxFSStorage({ dir: './static' }),
 })
@@ -58,6 +46,7 @@ function normalizeArgs(rawArgs: string) {
 }
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
   const r2 = useStorage('r2')
   const cloudreveR2 = useStorage('cloudreveR2')
   const fs = useStorage('fs')
@@ -83,9 +72,7 @@ export default defineEventHandler(async (event) => {
 
   if (await r2.hasItem(cacheKey)) {
     console.log('✅ Cache HIT', { cacheKey })
-    const bucketBaseUrl = 'https://cdn.bucket.redcatpictures.com'
-    await sendRedirect(event, `${bucketBaseUrl}/${cacheKey}`)
-    return
+    return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`)
   }
   console.log('⚠️ Cache MISS', { cacheKey })
 
@@ -96,25 +83,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Missing media' })
   }
 
-  await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
-
   // console.log('🛠️ Transform START', { source, modifiers })
+  await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
   const { data } = await ipx(source, modifiers).process()
 
   if (typeof data == 'string') {
     throw createError({ statusCode: 404, statusMessage: 'Data is string' })
   }
   // console.log('📦 Transform DONE', { bytes: data.byteLength })
-  ;(async () => {
-    await r2.setItemRaw(cacheKey, data)
-    await fs.removeItem(source)
-    console.log('💾 Saved to cache', { cacheKey, bytes: data.byteLength })
-  })()
 
-  const ct = mime[format] || 'application/octet-stream'
-  setHeader(event, 'Content-Type', ct)
-  setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-  setHeader(event, 'Content-Length', data.byteLength)
+  await r2.setItemRaw(cacheKey, data)
+  await fs.removeItem(source)
+  console.log('💾 Saved to cache', { cacheKey, bytes: data.byteLength })
 
-  return data
+  return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`)
 })

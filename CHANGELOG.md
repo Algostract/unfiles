@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.2
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.1...v0.1.2)
+
+### 💅 Refactors
+
+- Optimize cache handling and update response headers ([ad7e08e](https://github.com/algostract/unfiles/commit/ad7e08e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.1
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.0...v0.1.1)

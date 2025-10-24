@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.4
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.3...v0.1.4)
+
+### 🩹 Fixes
+
+- Refactor response header setting and cache handling in media route ([52514c1](https://github.com/algostract/unfiles/commit/52514c1))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.3
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.2...v0.1.3)

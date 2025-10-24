@@ -81,6 +81,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Vary', 'Accept')
   setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet') // Instruct crawlers not to index this redirecting URL
   setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
+  setResponseHeader(event, 'Content-Type', `image/${modifiers.format}`)
 
   if (!modifiers.format) {
     const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()

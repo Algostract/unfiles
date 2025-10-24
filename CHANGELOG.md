@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.3
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.2...v0.1.3)
+
+### 🩹 Fixes
+
+- Set Content-Type header based on image format ([63be531](https://github.com/algostract/unfiles/commit/63be531))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.2
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.1...v0.1.2)

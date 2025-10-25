@@ -7,3 +7,18 @@ services:
       - .env.prod
     ports:
       - 3500:3000
+
+volumes:
+  static:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./static
+
+  data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./.data

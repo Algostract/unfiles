@@ -1,6 +1,7 @@
 import { createIPX, ipxFSStorage } from 'ipx'
 import { hash } from 'ohash'
 import PQueue from 'p-queue'
+import { consola } from 'consola'
 
 const formatMime = {
   avif: 'image/avif',
@@ -20,6 +21,7 @@ const ipx = createIPX({
 
 const syncDrive = defineCachedFunction(
   async () => {
+    consola.log('🔄 Syncing Drive')
     const config = useRuntimeConfig().private
 
     const nameToPathMap: { [key: string]: string } = {}
@@ -80,17 +82,17 @@ export default defineEventHandler<Promise<Buffer>>(async (event) => {
   const fs = useStorage('fs')
 
   const raw = event.context.params?._ || ''
-  // console.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
+  // consola.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
 
   const [rawArgs, source] = raw.split('/')
   if (!source) {
     throw createError({ statusCode: 404, statusMessage: 'Missing source' })
   }
 
-  const normArgs = normalizeArgs(rawArgs)
-  // console.log('🧩 Parames', { source, rawArgs, normArgs })
-  const modifiers = await parseIpxArgs(normArgs)
-  // console.log('⚙️  Modifiers', modifiers)
+  const args = normalizeArgs(rawArgs)
+  // consola.log('🧩 Parames', { source, rawArgs, normArgs })
+  const modifiers = await parseIpxArgs(args)
+  // consola.log('⚙️  Modifiers', modifiers)
 
   if (!modifiers.format) {
     const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
@@ -106,13 +108,20 @@ export default defineEventHandler<Promise<Buffer>>(async (event) => {
   setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
   setResponseHeader(event, 'Vary', 'Accept')
 
-  const cacheHash = hash({ src: source, args: normArgs })
+  const cacheHash = hash({ source, args, format })
   const cacheKey = `cache/${cacheHash}.${format}`
 
   if (await fs.hasItem(cacheKey)) {
     const data = Buffer.from((await fs.getItemRaw<ArrayBuffer>(cacheKey))!)
 
-    console.log('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
+    consola.success('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
+    r2.hasItem(cacheKey).then(async (value) => {
+      if (value) return
+
+      await fs.removeItem(cacheKey)
+      consola.info('🧹 Remove from FS cache', { cacheKey, bytes: data.byteLength })
+    })
+
     console.timeEnd('transform-total')
     // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
     return data
@@ -121,9 +130,9 @@ export default defineEventHandler<Promise<Buffer>>(async (event) => {
   if (await r2.hasItem(cacheKey)) {
     const data = Buffer.from((await r2.getItemRaw<ArrayBuffer>(cacheKey))!)
 
-    console.log('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
+    consola.success('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
     fs.setItemRaw(cacheKey, data).then(() => {
-      console.log('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+      consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
     })
 
     console.timeEnd('transform-total')
@@ -133,12 +142,13 @@ export default defineEventHandler<Promise<Buffer>>(async (event) => {
 
   const mappedSource = (await syncDrive())[source]
   if (!mappedSource) {
+    consola.error('🚧 Missing media', { cacheKey })
     throw createError({ statusCode: 404, statusMessage: 'Missing media' })
   }
 
   return await queue.add(async () => {
-    console.log('⚠️ Cache MISS', { cacheKey })
-    // console.log('🛠️ Transform START', { source, modifiers })
+    consola.warn('⚠️ Cache MISS', { cacheKey })
+    // consola.log('🛠️ Transform START', { source, modifiers })
     await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
 
     const { data } = await ipx(source, modifiers).process()
@@ -147,13 +157,13 @@ export default defineEventHandler<Promise<Buffer>>(async (event) => {
     if (typeof data == 'string') {
       throw createError({ statusCode: 404, statusMessage: 'Data is string' })
     }
-    // console.log('📦 Transform DONE', { cacheKey, bytes: data.byteLength })
+    // consola.log('📦 Transform DONE', { cacheKey, bytes: data.byteLength })
 
     fs.setItemRaw(cacheKey, data).then(async () => {
-      console.log('💾 Saved to FS cache', { cacheKey })
+      consola.info('💾 Saved to FS cache', { cacheKey })
     })
     r2.setItemRaw(cacheKey, data).then(async () => {
-      console.log('💾 Saved to R2 cache', { cacheKey })
+      consola.info('💾 Saved to R2 cache', { cacheKey })
     })
 
     console.timeEnd('transform-total')

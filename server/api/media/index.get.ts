@@ -72,13 +72,13 @@ async function fetchFilesRecursively(
   const queue: Array<{ uri: string; depth: number }> = [{ uri: rootUri, depth: 0 }]
   while (queue.length) {
     const { uri, depth } = queue.shift()!
-    console.log(`📂 Enter folder(depth=${depth}): ${uri} | pending: ${queue.length}`)
+    consola.log(`📂 Enter folder(depth=${depth}): ${uri} | pending: ${queue.length}`)
     let page = 0
     while (true) {
-      console.log(`📄 Listing page ${page} for ${uri}`)
+      consola.log(`📄 Listing page ${page} for ${uri}`)
       const res = await api('/file', { method: 'GET', query: { uri, page, page_size } })
       if (res.code !== 0) {
-        console.error(`❌ List error @ ${uri} p${page}: ${res.msg || 'unknown'}`)
+        consola.error(`❌ List error @ ${uri} p${page}: ${res.msg || 'unknown'}`)
         throw createError({ statusCode: 502, statusMessage: res.msg || 'Cloudreve list error' })
       }
       const batch = res.data?.files || []
@@ -100,7 +100,7 @@ async function getThumbnail(
 ): Promise<string | null> {
   try {
     if (f.metadata && 'thumb:disabled' in f.metadata) {
-      console.log(`⏭️ Skip thumb (disabled): ${f.name}`)
+      consola.log(`⏭️ Skip thumb (disabled): ${f.name}`)
       return null
     }
     const r = await api('/file/thumb', { method: 'GET', query: { uri: f.path } })
@@ -109,7 +109,7 @@ async function getThumbnail(
     }
     return null
   } catch (err) {
-    console.error(`❌ Thumb fetch error: ${f.name} — ${err!.message || err}`)
+    consola.error(`❌ Thumb fetch error: ${f.name} — ${err!.message || err}`)
     return null
   }
 }
@@ -119,17 +119,17 @@ async function triggerThumbGenerate(
   f: CloudreveFile
 ): Promise<boolean> {
   try {
-    console.log(`🔄 Trigger thumb generation: ${f.name}, ${f.path}`)
+    consola.log(`🔄 Trigger thumb generation: ${f.name}, ${f.path}`)
     const r = await api('/file/thumb/generate', { method: 'POST', body: { uri: f.path } })
     if (r.code === 0) {
-      console.log(`✨ Thumb generation started for: ${f.name}`)
+      consola.log(`✨ Thumb generation started for: ${f.name}`)
       return true
     } else {
-      console.warn(`⚠️ Thumb generate API error (${r.code}): ${f.name} — ${r.msg || ''}`)
+      consola.warn(`⚠️ Thumb generate API error (${r.code}): ${f.name} — ${r.msg || ''}`)
       return false
     }
   } catch (err) {
-    console.error(`❌ Thumb gen error: ${f.name} — ${err?.message || err}`)
+    consola.error(`❌ Thumb gen error: ${f.name} — ${err?.message || err}`)
     return false
   }
 }
@@ -154,7 +154,7 @@ async function getOriginalPreviewUrl(
 
     return res.data[0].link//(await fetch(res.data[0].link, { method: 'HEAD', redirect: 'follow' })).url
   } catch (err: any) {
-    console.error(
+    consola.error(
       `❌ Getting original PREVIEW URL failed for ${f.path}: ${err?.message || err}`
     )
     return
@@ -196,13 +196,13 @@ export default defineCachedEventHandler(async (event) => {
   })
 
   const allFiles = await fetchFilesRecursively(api, uri, Number(page_size), Number(max_depth))
-  console.log(`🧮 Total files collected (all depths): ${allFiles.length}`)
+  consola.log(`🧮 Total files collected (all depths): ${allFiles.length}`)
 
   const mediaFiles = allFiles.filter(isMedia)
   const imgCount = mediaFiles.filter(isImage).length
   const vidCount = mediaFiles.filter(f => videoExt.has((f.name.split('.').pop() || '').toLowerCase())).length
   const audCount = mediaFiles.filter(f => audioExt.has((f.name.split('.').pop() || '').toLowerCase())).length
-  console.log(`🖼️ Images: ${imgCount}  🎬 Videos: ${vidCount}  🎵 Audios: ${audCount}  🧩 Total media: ${mediaFiles.length}`)
+  consola.log(`🖼️ Images: ${imgCount}  🎬 Videos: ${vidCount}  🎵 Audios: ${audCount}  🧩 Total media: ${mediaFiles.length}`)
 
   // Limit thumbnail calls & provide direct original link logic
   const results = await mapLimit(mediaFiles, THUMB_PARALLEL_LIMIT, async (f) => {
@@ -215,7 +215,7 @@ export default defineCachedEventHandler(async (event) => {
           await new Promise((res) => setTimeout(res, 750))
           thumbnail = await getThumbnail(api, f)
         } else {
-          console.warn(`⚠️ Could not generate thumbnail for image: ${f.name}`)
+          consola.warn(`⚠️ Could not generate thumbnail for image: ${f.name}`)
         }
       }
     } else {
@@ -238,7 +238,7 @@ export default defineCachedEventHandler(async (event) => {
     }
   })
 
-  console.log(`📦 Returning ${results.length} media items`)
+  consola.log(`📦 Returning ${results.length} media items`)
   return { count: results.length, items: results }
 }, { swr: true, maxAge: 60 * 60, staleMaxAge: 30 })
  */

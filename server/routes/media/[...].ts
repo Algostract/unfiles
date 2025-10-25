@@ -43,7 +43,7 @@ const syncDrive = defineCachedFunction(
 
     return nameToPathMap
   },
-  { swr: true, staleMaxAge: 60 * 5, maxAge: 86400 }
+  { swr: true, staleMaxAge: 60 * 7, maxAge: 60 * 10 }
 )
 
 const queue = new PQueue({ concurrency: 1 })

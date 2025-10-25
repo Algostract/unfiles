@@ -44,7 +44,7 @@ const syncDrive = defineCachedFunction(
   { swr: true, staleMaxAge: 60 * 5, maxAge: 86400 }
 )
 
-const queue = new PQueue({ concurrency: 2 })
+const queue = new PQueue({ concurrency: 1 })
 
 function normalizeArgs(rawArgs: string) {
   const decodedArgs = decodeURIComponent(rawArgs || '')

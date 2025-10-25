@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.6
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.5...v0.1.6)
+
+### 🩹 Fixes
+
+- Adjust resource limits and queue concurrency in docker-compose and media route ([74efe18](https://github.com/algostract/unfiles/commit/74efe18))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.5
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.4...v0.1.5)

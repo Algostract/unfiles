@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.2.0
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.6...v0.2.0)
+
+### 🚀 Enhancements
+
+- ⚠️ Add consola for logging and new cache sync and brust ([6ed011e](https://github.com/algostract/unfiles/commit/6ed011e))
+
+### 🩹 Fixes
+
+- Update cache sync parameters for improved performance ([11e363f](https://github.com/algostract/unfiles/commit/11e363f))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Add consola for logging and new cache sync and brust ([6ed011e](https://github.com/algostract/unfiles/commit/6ed011e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.1.6
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.5...v0.1.6)

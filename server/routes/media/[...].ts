@@ -88,7 +88,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     const args = normalizeArgs(rawArgs)
     const modifiers = await parseIpxArgs(args)
 
-    if (!modifiers.format) {
+    if (!modifiers.format || modifiers.format === 'auto') {
       const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
       let negotiated
       if (supportsMimeType('image/avif', accept)) negotiated = 'avif'

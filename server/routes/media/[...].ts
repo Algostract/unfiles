@@ -56,7 +56,7 @@ function normalizeArgs(rawArgs: string) {
 }
 
 async function transform(cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) {
-  const source = `drive/${encodeURI(mappedSource)}`
+  const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
   const ipxUrl = `${process.env.INTERNAL_BASE_URL}/_ipx/${stringifyIpxArgs(modifiers)}/${source}`
 
   const res = await fetch(ipxUrl, { method: 'GET' })
@@ -126,7 +126,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       const [toDisk, toClient] = data.stream.tee()
 
       consola.success('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
-      diskPutFileStream(diskCacheKey, toDisk).then(() => {
+      diskPutFileStream(cacheKey, toDisk).then(() => {
         consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
       })
 

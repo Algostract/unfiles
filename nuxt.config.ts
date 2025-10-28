@@ -132,10 +132,6 @@ export default defineNuxtConfig({
   },
   image: {
     provider: 'ipx',
-    domains: process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL ? [new URL(process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL!).hostname] : [],
-    alias: {
-      drive: process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL!,
-    },
     ipx: {},
   },
   colorMode: {

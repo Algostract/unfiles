@@ -1,31 +1,34 @@
-export default defineEventHandler(async () => {
-  const config = useRuntimeConfig().private
-  // const allItemKeys = await getAllKeys('uploads:1:media')
-  const allItemKeys = await r2GetAllFiles(r2Drive, {
-    endpoint: config.cloudreveR2Endpoint,
-    bucket: config.cloudreveR2Bucket,
-  })
-
-  const result = allItemKeys
-    .map((id) => {
-      const [path, ...b] = id.split('_')
-      if (b.at(-1) === 'thumb') return null
-
-      const originalFilePath = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${path.replaceAll(':', '/')}_${b.join('_')}`
-
-      return {
-        id,
-        name: b.join('_'),
-        size: 100,
-        uri: '',
-        thumbnail: `${originalFilePath}._thumb`,
-        original: originalFilePath,
-      }
+export default defineCachedEventHandler(
+  async () => {
+    const config = useRuntimeConfig().private
+    // const allItemKeys = await getAllKeys('uploads:1:media')
+    const allItemKeys = await r2GetAllFiles(r2Drive, {
+      endpoint: config.cloudreveR2Endpoint,
+      bucket: config.cloudreveR2Bucket,
     })
-    .filter((item) => item !== null)
 
-  return result
-})
+    const result = allItemKeys
+      .map((id) => {
+        const [path, ...b] = id.split('_')
+        if (b.at(-1) === 'thumb') return null
+
+        const originalFilePath = `${config.cloudrevePublicUrl}/${path.replaceAll(':', '/')}_${b.join('_')}`
+
+        return {
+          id,
+          name: b.join('_'),
+          size: 100,
+          uri: '',
+          thumbnail: `${originalFilePath}._thumb`,
+          original: originalFilePath,
+        }
+      })
+      .filter((item) => item !== null)
+
+    return result
+  },
+  { maxAge: 60 * 60 }
+)
 
 /* 
 // --- Types ---

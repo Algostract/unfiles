@@ -7,7 +7,7 @@ async function clearDir(storage: Storage<StorageValue>, base: string, driver: 'f
 
   const keys =
     driver === 's3'
-      ? await r2GetAllFiles(r2Drive, {
+      ? await r2GetAllFiles(r2Cdn, {
           endpoint: config.r2Endpoint,
           bucket: config.r2Bucket,
         })

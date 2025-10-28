@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.2
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.1...v0.3.2)
+
+### 🩹 Fixes
+
+- Allow 'auto' as a valid format in modifiers check ([81151a8](https://github.com/algostract/unfiles/commit/81151a8))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.1
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.0...v0.3.1)

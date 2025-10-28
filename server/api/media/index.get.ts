@@ -1,12 +1,9 @@
 export default defineEventHandler(async () => {
   const config = useRuntimeConfig().private
   // const allItemKeys = await getAllKeys('uploads:1:media')
-  const allItemKeys = await r2GetAllFiles({
-    accessKeyId: config.cloudreveR2AccessKeyId,
-    secretAccessKey: config.cloudreveR2SecretAccessKey,
+  const allItemKeys = await r2GetAllFiles(r2Drive, {
     endpoint: config.cloudreveR2Endpoint,
     bucket: config.cloudreveR2Bucket,
-    region: config.cloudreveR2Region || 'auto',
   })
 
   const result = allItemKeys
@@ -14,7 +11,7 @@ export default defineEventHandler(async () => {
       const [path, ...b] = id.split('_')
       if (b.at(-1) === 'thumb') return null
 
-      const originalFilePath = `https://drive.bucket.redcatpictures.com/${path.replaceAll(':', '/')}_${b.join('_')}`
+      const originalFilePath = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${path.replaceAll(':', '/')}_${b.join('_')}`
 
       return {
         id,

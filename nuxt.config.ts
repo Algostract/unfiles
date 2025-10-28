@@ -130,7 +130,14 @@ export default defineNuxtConfig({
       scan: true,
     },
   },
-  image: {},
+  image: {
+    provider: 'ipx',
+    domains: ['drive.bucket.redcatpictures.com'],
+    alias: {
+      drive: 'https://drive.bucket.redcatpictures.com',
+    },
+    ipx: {},
+  },
   colorMode: {
     preference: 'system',
     fallback: 'light',

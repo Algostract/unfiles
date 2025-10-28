@@ -1,12 +1,19 @@
 name: 'unfiles-dev'
+
 services:
   app:
     build: .
     restart: on-failure:3
     env_file:
       - .env.prod
+    volumes:
+      - static:/app/static
+      - data:/app/.data
     ports:
-      - 3500:3000
+      - '3500:3000'
+    cpus: '8' # limit to 0.4 CPU
+    mem_limit: 4056M # hard memory cap
+    mem_reservation: 512M # soft memory reservation
 
 volumes:
   static:

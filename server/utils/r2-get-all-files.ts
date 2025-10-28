@@ -1,21 +1,4 @@
-import { AwsClient } from 'aws4fetch'
-
-type R2Config = {
-  accessKeyId: string
-  secretAccessKey: string
-  endpoint: string
-  bucket: string
-  region?: string // for R2: 'auto'
-}
-
-export function makeAwsClient(cfg: R2Config) {
-  return new AwsClient({
-    accessKeyId: cfg.accessKeyId,
-    secretAccessKey: cfg.secretAccessKey,
-    service: 's3',
-    region: cfg.region || 'auto', // R2 uses region 'auto'
-  })
-}
+import type { AwsClient } from 'aws4fetch'
 
 function xmlUnescape(s: string) {
   return s
@@ -39,8 +22,7 @@ function parseListV2(xml: string) {
   return { keys, isTruncated, nextContinuationToken }
 }
 
-export default async function (cfg: R2Config, opts: { prefix?: string; maxKeys?: number } = {}): Promise<string[]> {
-  const aws = makeAwsClient(cfg)
+export default async function (r2: AwsClient, cfg: { endpoint: string; bucket: string }, opts: { prefix?: string; maxKeys?: number } = {}): Promise<string[]> {
   const all: string[] = []
   const maxKeys = Math.min(Math.max(opts.maxKeys || 1000, 1), 1000) // S3 cap = 1000
   let continuationToken: string | undefined
@@ -53,7 +35,7 @@ export default async function (cfg: R2Config, opts: { prefix?: string; maxKeys?:
     if (opts.prefix) url.searchParams.set('prefix', opts.prefix)
     if (continuationToken) url.searchParams.set('continuation-token', continuationToken)
 
-    const res = await aws.fetch(url.toString(), { method: 'GET' })
+    const res = await r2.fetch(url.toString(), { method: 'GET' })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new Error(`ListObjectsV2 failed: ${res.status} ${res.statusText} ${body}`)

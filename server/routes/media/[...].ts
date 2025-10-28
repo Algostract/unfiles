@@ -1,23 +1,8 @@
-import { createIPX, ipxFSStorage } from 'ipx'
-import { hash } from 'ohash'
-import PQueue from 'p-queue'
+import type { ReadStream } from 'node:fs'
+import { createReadStream, statSync } from 'node:fs'
 import { consola } from 'consola'
-
-const formatMime = {
-  avif: 'image/avif',
-  webp: 'image/webp',
-  jpeg: 'image/jpeg',
-  jpg: 'image/jpeg',
-  png: 'image/png',
-  gif: 'image/gif',
-  heif: 'image/heif',
-  tiff: 'image/tiff',
-  svg: 'image/svg+xml',
-}
-
-const ipx = createIPX({
-  storage: ipxFSStorage({ dir: './static' }),
-})
+import { hash } from 'ohash'
+import { lookup, contentType, types as mimeTypes } from 'mime-types'
 
 const syncDrive = defineCachedFunction(
   async () => {
@@ -25,12 +10,9 @@ const syncDrive = defineCachedFunction(
     const config = useRuntimeConfig().private
 
     const nameToPathMap: { [key: string]: string } = {}
-    const allItemKeys = await r2GetAllFiles({
-      accessKeyId: config.cloudreveR2AccessKeyId,
-      secretAccessKey: config.cloudreveR2SecretAccessKey,
+    const allItemKeys = await r2GetAllFiles(r2Drive, {
       endpoint: config.cloudreveR2Endpoint,
       bucket: config.cloudreveR2Bucket,
-      region: config.cloudreveR2Region || 'auto',
     })
 
     for (const path of allItemKeys) {
@@ -46,7 +28,18 @@ const syncDrive = defineCachedFunction(
   { swr: true, staleMaxAge: 60 * 7, maxAge: 60 * 10 }
 )
 
-const queue = new PQueue({ concurrency: 1 })
+function disabledMimeType(mime: string, accept: string) {
+  return accept
+    .split(',')
+    .map((p) => p.trim())
+    .some((p) => p.startsWith(mime) && /;q=0(\.0+)?\b/.test(p))
+}
+
+function supportsMimeType(mime: string, accept: string) {
+  if (!accept) return false
+  if (disabledMimeType(mime, accept)) return false
+  return accept.includes(mime)
+}
 
 function normalizeArgs(rawArgs: string) {
   const decodedArgs = decodeURIComponent(rawArgs || '')
@@ -62,112 +55,114 @@ function normalizeArgs(rawArgs: string) {
   return normArgs
 }
 
-const disabledMimeType = (mime: string, accept: string) => {
-  return accept
-    .split(',')
-    .map((p) => p.trim())
-    .some((p) => p.startsWith(mime) && /;q=0(\.0+)?\b/.test(p))
-}
+async function transform(cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) {
+  const source = `drive/${encodeURI(mappedSource)}`
+  const ipxUrl = `${process.env.INTERNAL_BASE_URL}/_ipx/${stringifyIpxArgs(modifiers)}/${source}`
 
-const supportsMimeType = (mime: string, accept: string) => {
-  if (!accept) return false
-  if (disabledMimeType(mime, accept)) return false
-  return accept.includes(mime)
-}
-
-export default defineEventHandler<Promise<Buffer>>(async (event) => {
-  console.time('transform-total')
-  const cloudreveR2 = useStorage('cloudreveR2')
-  const r2 = useStorage('r2')
-  const fs = useStorage('fs')
-
-  const raw = event.context.params?._ || ''
-  // consola.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
-
-  const [rawArgs, source] = raw.split('/')
-  if (!source) {
-    throw createError({ statusCode: 404, statusMessage: 'Missing source' })
+  const res = await fetch(ipxUrl, { method: 'GET' })
+  if (!res.ok || !res.body) {
+    console.log({ ipxUrl }, '🚧 Data is undefined')
+    throw createError({ statusCode: 404, message: '🚧 Data is undefined' })
   }
 
-  const args = normalizeArgs(rawArgs)
-  // consola.log('🧩 Parames', { source, rawArgs, normArgs })
-  const modifiers = await parseIpxArgs(args)
-  // consola.log('⚙️  Modifiers', modifiers)
-
-  if (!modifiers.format) {
-    const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
-    let negotiated
-    if (supportsMimeType('image/avif', accept)) negotiated = 'avif'
-    else if (supportsMimeType('image/webp', accept)) negotiated = 'webp'
-    else if (accept.includes('image/*') || accept.includes('*/*') || accept.includes('image/')) negotiated = 'jpeg'
-    modifiers.format = negotiated || 'jpeg'
+  return {
+    stream: res.body,
+    byteLength: parseInt(res.headers.get('content-length') ?? '0'),
+    contentType: res.headers.get('content-type') ?? undefined,
   }
-  const format = modifiers.format as keyof typeof formatMime
-  setResponseHeader(event, 'Content-Type', formatMime[format] ?? 'application/octet-stream')
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-  setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
-  setResponseHeader(event, 'Vary', 'Accept')
+}
 
-  const cacheHash = hash({ source, args, format })
-  const cacheKey = `cache/${cacheHash}.${format}`
+export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (event) => {
+  try {
+    console.time('transform-total')
+    const r2 = useStorage('r2')
+    const fs = useStorage('fs')
 
-  if (await fs.hasItem(cacheKey)) {
-    const data = Buffer.from((await fs.getItemRaw<ArrayBuffer>(cacheKey))!)
+    const raw = event.context.params?._ || ''
 
-    consola.success('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
-    r2.hasItem(cacheKey).then(async (value) => {
-      if (value) return
+    const [rawArgs, source] = raw.split('/')
+    if (!source) {
+      throw createError({ statusCode: 404, message: '🚧 Missing source' })
+    }
 
-      await fs.removeItem(cacheKey)
-      consola.info('🧹 Remove from FS cache', { cacheKey, bytes: data.byteLength })
-    })
+    const args = normalizeArgs(rawArgs)
+    const modifiers = await parseIpxArgs(args)
 
+    if (!modifiers.format) {
+      const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
+      let negotiated
+      if (supportsMimeType('image/avif', accept)) negotiated = 'avif'
+      else if (supportsMimeType('image/webp', accept)) negotiated = 'webp'
+      else if (accept.includes('image/*') || accept.includes('*/*') || accept.includes('image/')) negotiated = 'jpeg'
+      modifiers.format = negotiated || 'jpeg'
+    }
+
+    setResponseHeader(event, 'Content-Type', mimeTypes[`${modifiers.format}`] ?? 'application/octet-stream')
+    setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+    setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+    setResponseHeader(event, 'Vary', 'Accept')
+
+    const cacheHash = hash({ source, args })
+    const cacheKey = `cache/${cacheHash}.${modifiers.format}`
+    const diskCacheKey = `./static/${cacheKey}`
+
+    if (await fs.hasItem(cacheKey)) {
+      const data = {
+        stream: createReadStream(diskCacheKey),
+        contentType: contentType(lookup(diskCacheKey) || 'application/octet-stream') || 'application/octet-stream',
+        byteLength: statSync(diskCacheKey).size,
+      }
+
+      consola.success('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
+
+      console.timeEnd('transform-total')
+      setResponseHeader(event, 'Content-Type', data.contentType)
+      setResponseHeader(event, 'Content-Length', data.byteLength)
+      return data.stream
+    }
+
+    if (await r2.hasItem(cacheKey)) {
+      const data = await r2GetFileStream(cacheKey)
+      const [toDisk, toClient] = data.stream.tee()
+
+      consola.success('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
+      diskPutFileStream(diskCacheKey, toDisk).then(() => {
+        consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+      })
+
+      console.timeEnd('transform-total')
+      setResponseHeader(event, 'Content-Type', data.contentType)
+      setResponseHeader(event, 'Content-Length', data.byteLength)
+      return toClient
+    }
+
+    const mappedSource = (await syncDrive())[source]
+    if (!mappedSource) {
+      throw createError({ statusCode: 404, message: '🚧 Missing media' })
+    }
+
+    consola.warn('⚠️ Cache MISS', { cacheKey })
+
+    const data = await transform(cacheKey, mappedSource, modifiers)
     console.timeEnd('transform-total')
-    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
-    return data
-  }
+    const [toStorage, toClient] = data.stream.tee()
+    const [toDisk, toR2] = toStorage.tee()
 
-  if (await r2.hasItem(cacheKey)) {
-    const data = Buffer.from((await r2.getItemRaw<ArrayBuffer>(cacheKey))!)
-
-    consola.success('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
-    fs.setItemRaw(cacheKey, data).then(() => {
+    await diskPutFileStream(diskCacheKey, toDisk).then(() => {
+      consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+    })
+    await r2PutFileStream(cacheKey, toR2, { contentType: data.contentType, byteLength: data.byteLength }).then(() => {
       consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
     })
 
-    console.timeEnd('transform-total')
-    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
-    return data
-  }
-
-  const mappedSource = (await syncDrive())[source]
-  if (!mappedSource) {
-    consola.error('🚧 Missing media', { cacheKey })
-    throw createError({ statusCode: 404, statusMessage: 'Missing media' })
-  }
-
-  return await queue.add(async () => {
-    consola.warn('⚠️ Cache MISS', { cacheKey })
-    // consola.log('🛠️ Transform START', { source, modifiers })
-    await fs.setItemRaw(source, Buffer.from((await cloudreveR2.getItemRaw<ArrayBuffer>(mappedSource))!))
-
-    const { data } = await ipx(source, modifiers).process()
-    await fs.removeItem(source)
-
-    if (typeof data == 'string') {
-      throw createError({ statusCode: 404, statusMessage: 'Data is string' })
+    setResponseHeader(event, 'Content-Type', data.contentType)
+    setResponseHeader(event, 'Content-Length', data.byteLength)
+    return toClient
+  } catch (error) {
+    if (error instanceof Error && 'statusCode' in error) {
+      throw error
     }
-    // consola.log('📦 Transform DONE', { cacheKey, bytes: data.byteLength })
-
-    fs.setItemRaw(cacheKey, data).then(async () => {
-      consola.info('💾 Saved to FS cache', { cacheKey })
-    })
-    r2.setItemRaw(cacheKey, data).then(async () => {
-      consola.info('💾 Saved to R2 cache', { cacheKey })
-    })
-
-    console.timeEnd('transform-total')
-    // return await sendRedirect(event, `${config.private.r2PublicUrl}/${cacheKey}`, 301)
-    return data
-  })
+    console.error('Route media GET', error)
+    throw createError({ statusCode: 500, message: 'Some Unknown Error Found' })
+  }
 })

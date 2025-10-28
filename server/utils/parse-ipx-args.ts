@@ -1,5 +1,5 @@
 export default async function (args: string) {
-  const mods: Record<string, string> = {}
+  const mods: Record<string, string | number | boolean> = {}
   // Normalize separators: support ",", URL-encoded commas, and "&"
   const normalized = (args || '').replace(/%2C/gi, ',').replace(/&/g, ',').replace(/\s+/g, '') // strip spaces just in case
   const tokens = normalized.split(',').filter(Boolean)

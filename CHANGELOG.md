@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.1
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.0...v0.3.1)
+
+### 🩹 Fixes
+
+- Update media route to use environment variable for source URL ([d03c817](https://github.com/algostract/unfiles/commit/d03c817))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.0
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.6...v0.3.0)

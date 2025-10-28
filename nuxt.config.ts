@@ -132,9 +132,9 @@ export default defineNuxtConfig({
   },
   image: {
     provider: 'ipx',
-    domains: ['drive.bucket.redcatpictures.com'],
+    domains: [new URL(process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL!).hostname],
     alias: {
-      drive: 'https://drive.bucket.redcatpictures.com',
+      drive: process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL!,
     },
     ipx: {},
   },

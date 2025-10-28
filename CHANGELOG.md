@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.1.6...v0.3.0)
+
+### 🚀 Enhancements
+
+- ⚠️ Add consola for logging and new cache sync and brust ([6ed011e](https://github.com/algostract/unfiles/commit/6ed011e))
+- ⚠️ Added streaming ([c90b392](https://github.com/algostract/unfiles/commit/c90b392))
+
+### 🩹 Fixes
+
+- Update cache sync parameters for improved performance ([11e363f](https://github.com/algostract/unfiles/commit/11e363f))
+- Update image provider domains to use environment variable ([953fa0d](https://github.com/algostract/unfiles/commit/953fa0d))
+- Update image provider domains to handle undefined environment variable ([7e8850d](https://github.com/algostract/unfiles/commit/7e8850d))
+
+### 🤖 CI
+
+- **release:** Update version ([d1720ac](https://github.com/algostract/unfiles/commit/d1720ac))
+- **release:** Update version ([5c469a6](https://github.com/algostract/unfiles/commit/5c469a6))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Add consola for logging and new cache sync and brust ([6ed011e](https://github.com/algostract/unfiles/commit/6ed011e))
+- ⚠️ Added streaming ([c90b392](https://github.com/algostract/unfiles/commit/c90b392))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+- Shba007 ([@shba007](https://github.com/shba007))
+
 ## v0.2.0
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.1.6...v0.2.0)

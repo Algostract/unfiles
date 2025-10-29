@@ -1,4 +1,4 @@
-import { lookup, contentType } from 'mime-types'
+import mimeTypes from 'mime-types'
 
 export default async function (objectKey: string, webStream: ReadableStream, byteLength: number) {
   const endpoint = process.env.NUXT_PRIVATE_R2_ENDPOINT!
@@ -6,14 +6,15 @@ export default async function (objectKey: string, webStream: ReadableStream, byt
   const url = `${endpoint}/${bucket}/${objectKey}`
 
   let res: Response
+  const contentType = mimeTypes.contentType(mimeTypes.lookup(objectKey) || 'application/octet-stream') || 'application/octet-stream'
   try {
     res = await r2Cdn.fetch(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': contentType(lookup(objectKey) || 'application/octet-stream') || 'application/octet-stream',
+        'Content-Type': contentType,
         'Content-Length': byteLength.toString(),
       },
-      body: webStream,
+      body: new Blob([await new Response(webStream).blob()], { type: contentType }),
     })
   } catch (err) {
     // Network/connection error -> reject fetch

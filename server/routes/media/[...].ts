@@ -2,7 +2,7 @@ import type { ReadStream } from 'node:fs'
 import { createReadStream, statSync } from 'node:fs'
 import { consola } from 'consola'
 import { hash } from 'ohash'
-import { lookup, contentType, types as mimeTypes } from 'mime-types'
+import mimeTypes from 'mime-types'
 
 const syncDrive = defineCachedFunction(
   async () => {
@@ -83,7 +83,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       modifiers.format = negotiated || 'jpeg'
     }
 
-    setResponseHeader(event, 'Content-Type', mimeTypes[`${modifiers.format}`] ?? 'application/octet-stream')
+    setResponseHeader(event, 'Content-Type', mimeTypes.types[`${modifiers.format}`] ?? 'application/octet-stream')
     setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
     setResponseHeader(event, 'X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
     setResponseHeader(event, 'Vary', 'Accept')
@@ -95,7 +95,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     if (await fs.hasItem(cacheKey)) {
       const data = {
         stream: createReadStream(diskCacheKey),
-        contentType: contentType(lookup(diskCacheKey) || 'application/octet-stream') || 'application/octet-stream',
+        contentType: mimeTypes.contentType(mimeTypes.lookup(diskCacheKey) || 'application/octet-stream') || 'application/octet-stream',
         byteLength: statSync(diskCacheKey).size,
       }
 

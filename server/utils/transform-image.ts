@@ -27,7 +27,6 @@ function toArrayBuffer(input: Buffer | Uint8Array | ArrayBuffer): ArrayBuffer {
 const transform = pMemoize(
   (cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) =>
     queue.add(async () => {
-      const r2 = useStorage('r2')
       const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
       // consola.log('🛠️ Transform START', { source, modifiers })
 
@@ -42,24 +41,12 @@ const transform = pMemoize(
 
       // consola.log('📦 Transform DONE', { cacheKey, bytes: buffer.byteLength })
       const dataStream = new Response(buffer).body!
-      const [toDisk, _toR2] = dataStream.tee()
+      const [toDisk, toR2] = dataStream.tee()
       const diskCacheKey = `./static/${cacheKey}`
 
       // Cache to Storage
 
-      /*  r2PutFileStream(cacheKey, toR2, data.byteLength)
-         .then(() => {
-           consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
-         })
-         .then(() => diskPutFileStream(diskCacheKey, toDisk))
-         .then(() => {
-           consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
-         })
-         .catch((error) => {
-           consola.error('Failed to save to cache', error)
-         }) 
-      */
-      r2.setItemRaw(cacheKey, data)
+      r2PutFileStream(cacheKey, toR2, data.byteLength)
         .then(() => {
           consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
         })

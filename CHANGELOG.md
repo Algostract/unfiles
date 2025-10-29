@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.11
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.10...v0.3.11)
+
+### 💅 Refactors
+
+- Update mime-types import and usage for consistency ([faa5d82](https://github.com/algostract/unfiles/commit/faa5d82))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.10
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.9...v0.3.10)

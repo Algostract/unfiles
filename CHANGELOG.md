@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.13
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.12...v0.3.13)
+
+### 💅 Refactors
+
+- Remove ipx dependency and transformed image transformation logic to ipx server ([c761da0](https://github.com/algostract/unfiles/commit/c761da0))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.12
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.11...v0.3.12)

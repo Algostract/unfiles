@@ -7,15 +7,14 @@ export default async function (objectKey: string, webStream: ReadableStream, opt
 
   headers['Content-Type'] = opts.contentType || 'application/octet-stream'
   headers['Content-Length'] = opts.byteLength.toString()
-  // headers['x-amz-content-sha256']
 
   const res = await r2Cdn.fetch(url, {
     method: 'PUT',
     headers,
-    body: webStream, // Web ReadableStream streaming upload
+    body: webStream,
   })
   if (!(res.ok && res.body)) {
-    throw createError({ statusCode: res.status, message: 'R2 CDN GET failed' })
+    throw createError({ statusCode: res.status, message: 'R2 CDN Upload failed' })
   }
 
   return {

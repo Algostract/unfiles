@@ -55,23 +55,6 @@ function normalizeArgs(rawArgs: string) {
   return normArgs
 }
 
-async function transform(cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) {
-  const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
-  const ipxUrl = `${process.env.INTERNAL_BASE_URL}/_ipx/${stringifyIpxArgs(modifiers)}/${source}`
-
-  const res = await fetch(ipxUrl, { method: 'GET' })
-  if (!res.ok || !res.body) {
-    console.log({ ipxUrl }, '🚧 Data is undefined')
-    throw createError({ statusCode: 404, message: '🚧 Data is undefined' })
-  }
-
-  return {
-    stream: res.body,
-    byteLength: parseInt(res.headers.get('content-length') ?? '0'),
-    contentType: res.headers.get('content-type') ?? undefined,
-  }
-}
-
 export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (event) => {
   try {
     console.time('transform-total')
@@ -79,6 +62,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     const fs = useStorage('fs')
 
     const raw = event.context.params?._ || ''
+    // consola.log('🛬 Incoming', { method: event.node.req.method, url: event.node.req.url, raw })
 
     const [rawArgs, source] = raw.split('/')
     if (!source) {
@@ -86,7 +70,9 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     }
 
     const args = normalizeArgs(rawArgs)
+    // consola.log('🧩 Parames', { source, rawArgs, normArgs })
     const modifiers = await parseIpxArgs(args)
+    // consola.log('⚙️  Modifiers', modifiers)
 
     if (!modifiers.format || modifiers.format === 'auto') {
       const accept = (getRequestHeader(event, 'accept') || '').toLowerCase()
@@ -116,7 +102,6 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       consola.success('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
 
       console.timeEnd('transform-total')
-      setResponseHeader(event, 'Content-Type', data.contentType)
       setResponseHeader(event, 'Content-Length', data.byteLength)
       return data.stream
     }
@@ -126,12 +111,11 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       const [toDisk, toClient] = data.stream.tee()
 
       consola.success('✅ R2 Cache HIT', { cacheKey, bytes: data.byteLength })
-      diskPutFileStream(cacheKey, toDisk).then(() => {
+      diskPutFileStream(diskCacheKey, toDisk).then(() => {
         consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
       })
 
       console.timeEnd('transform-total')
-      setResponseHeader(event, 'Content-Type', data.contentType)
       setResponseHeader(event, 'Content-Length', data.byteLength)
       return toClient
     }
@@ -143,19 +127,18 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
 
     consola.warn('⚠️ Cache MISS', { cacheKey })
 
-    const data = await transform(cacheKey, mappedSource, modifiers)
+    const data = await transformImage(cacheKey, mappedSource, modifiers)
     console.timeEnd('transform-total')
-    const [toStorage, toClient] = data.stream.tee()
+    const [toStorage, toClient] = data.stream().tee()
     const [toDisk, toR2] = toStorage.tee()
 
-    await diskPutFileStream(diskCacheKey, toDisk).then(() => {
+    diskPutFileStream(diskCacheKey, toDisk).then(() => {
       consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
     })
     await r2PutFileStream(cacheKey, toR2, { contentType: data.contentType, byteLength: data.byteLength }).then(() => {
-      consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+      consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
     })
 
-    setResponseHeader(event, 'Content-Type', data.contentType)
     setResponseHeader(event, 'Content-Length', data.byteLength)
     return toClient
   } catch (error) {

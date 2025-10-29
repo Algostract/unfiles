@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.7
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.6...v0.3.7)
+
+### 🩹 Fixes
+
+- Enhance error handling and logging in R2 and disk file operations ([744199b](https://github.com/algostract/unfiles/commit/744199b))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.6
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.5...v0.3.6)

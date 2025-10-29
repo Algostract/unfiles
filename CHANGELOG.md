@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.10
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.9...v0.3.10)
+
+### 💅 Refactors
+
+- Stream disk writing ([dd3ae08](https://github.com/algostract/unfiles/commit/dd3ae08))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.9
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.8...v0.3.9)

@@ -15,7 +15,7 @@ const queue = new PQueue({
   interval: parseInt(process.env.RATE_LIMIT_INTERVAL || '1000'),
 })
 
-const cache = new ExpiryMap(10_000)
+const cache = new ExpiryMap(parseInt(process.env.RATE_LIMIT_CACHE_TTL || '10000'))
 
 function toArrayBuffer(input: Buffer | Uint8Array | ArrayBuffer): ArrayBuffer {
   if (input instanceof ArrayBuffer) return input

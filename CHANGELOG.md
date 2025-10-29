@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.3.6
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.5...v0.3.6)
+
+### 🩹 Fixes
+
+- Improve cache saving order and error handling for disk and R2 storage ([7a9024b](https://github.com/algostract/unfiles/commit/7a9024b))
+- Add logging for headers in R2 CDN upload function ([531f593](https://github.com/algostract/unfiles/commit/531f593))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.5
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.4...v0.3.5)

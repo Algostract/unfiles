@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.3
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.2...v0.3.3)
+
+### 💅 Refactors
+
+- Integrate IPX directly for image transformation and added queue and memoization ([161fe5e](https://github.com/algostract/unfiles/commit/161fe5e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.2
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.1...v0.3.2)

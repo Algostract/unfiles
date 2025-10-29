@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.14
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.13...v0.3.14)
+
+### 💅 Refactors
+
+- Comment out restart policy in docker-compose and improve image transformation logic ([6da8e08](https://github.com/algostract/unfiles/commit/6da8e08))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.13
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.12...v0.3.13)

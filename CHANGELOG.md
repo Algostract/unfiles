@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.12
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.11...v0.3.12)
+
+### 💅 Refactors
+
+- Remove unused dependencies and simplify transform function ([ecccb02](https://github.com/algostract/unfiles/commit/ecccb02))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.11
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.10...v0.3.11)

@@ -27,6 +27,8 @@ function toArrayBuffer(input: Buffer | Uint8Array | ArrayBuffer): ArrayBuffer {
 const transform = pMemoize(
   (cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) =>
     queue.add(async () => {
+      const r2 = useStorage('r2')
+      const fs = useStorage('fs')
       const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
       // consola.log('🛠️ Transform START', { source, modifiers })
 
@@ -40,22 +42,31 @@ const transform = pMemoize(
       const mime = (typeof modifiers.format === 'string' && (lookup(modifiers.format) || undefined)) || 'application/octet-stream'
 
       // consola.log('📦 Transform DONE', { cacheKey, bytes: buffer.byteLength })
-      const dataStream = new Response(buffer).body!
-      const [toDisk, toR2] = dataStream.tee()
-      const diskCacheKey = `./static/${cacheKey}`
+      // const dataStream = new Response(buffer).body!
+      // const [toDisk, toR2] = dataStream.tee()
+      // const diskCacheKey = `./static/${cacheKey}`
 
       // Cache to Storage
-      r2PutFileStream(cacheKey, toR2, data.byteLength)
-        .then(() => {
-          consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
-        })
-        .then(() => diskPutFileStream(diskCacheKey, toDisk))
-        .then(() => {
-          consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
-        })
-        .catch((error) => {
-          consola.error('Failed to save to cache', error)
-        })
+
+      /*  r2PutFileStream(cacheKey, toR2, data.byteLength)
+         .then(() => {
+           consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
+         })
+         .then(() => diskPutFileStream(diskCacheKey, toDisk))
+         .then(() => {
+           consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+         })
+         .catch((error) => {
+           consola.error('Failed to save to cache', error)
+         }) 
+      */
+
+      fs.setItemRaw(cacheKey, data).then(async () => {
+        consola.info('💾 Saved to FS cache', { cacheKey })
+      })
+      r2.setItemRaw(cacheKey, data).then(async () => {
+        consola.info('💾 Saved to R2 cache', { cacheKey })
+      })
 
       return {
         stream: new Response(buffer).body!,

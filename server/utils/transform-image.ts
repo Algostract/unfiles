@@ -1,4 +1,4 @@
-// import { consola } from 'consola'
+import { consola } from 'consola'
 import pMemoize from 'p-memoize'
 import PQueue from 'p-queue'
 import { createIPX, ipxFSStorage, ipxHttpStorage } from 'ipx'
@@ -40,13 +40,29 @@ const transform = pMemoize(
       const mime = (typeof modifiers.format === 'string' && (lookup(modifiers.format) || undefined)) || 'application/octet-stream'
 
       // consola.log('📦 Transform DONE', { cacheKey, bytes: buffer.byteLength })
+      const dataStream = new Response(buffer).body!
+      const [toDisk, toR2] = dataStream.tee()
+      const diskCacheKey = `./static/${cacheKey}`
+
+      // Cache to Storage
+      r2PutFileStream(cacheKey, toR2, data.byteLength)
+        .then(() => {
+          consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
+        })
+        .then(() => diskPutFileStream(diskCacheKey, toDisk))
+        .then(() => {
+          consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
+        })
+        .catch((error) => {
+          consola.error('Failed to save to cache', error)
+        })
 
       return {
-        stream: () => new Response(buffer).body!,
+        stream: new Response(buffer).body!,
         byteLength: buffer.byteLength,
         contentType: mime,
       } as {
-        stream: () => ReadableStream
+        stream: ReadableStream
         byteLength: number
         contentType: string
       }

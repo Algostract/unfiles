@@ -128,24 +128,10 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     consola.warn('⚠️ Cache MISS', { cacheKey })
 
     const data = await transformImage(cacheKey, mappedSource, modifiers)
+
     console.timeEnd('transform-total')
-    const [toStorage, toClient] = data.stream().tee()
-    const [toDisk, toR2] = toStorage.tee()
-
-    r2PutFileStream(cacheKey, toR2)
-      .then(() => {
-        consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
-      })
-      .then(() => diskPutFileStream(diskCacheKey, toDisk))
-      .then(() => {
-        consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
-      })
-      .catch((error) => {
-        consola.error('Failed to save to cache', error)
-      })
-
     setResponseHeader(event, 'Content-Length', data.byteLength)
-    return toClient
+    return data.stream
   } catch (error) {
     if (error instanceof Error && 'statusCode' in error) {
       throw error

@@ -1,6 +1,6 @@
 import { lookup, contentType } from 'mime-types'
 
-export default async function (objectKey: string, webStream: ReadableStream) {
+export default async function (objectKey: string, webStream: ReadableStream, byteLength: number) {
   const endpoint = process.env.NUXT_PRIVATE_R2_ENDPOINT!
   const bucket = process.env.NUXT_PRIVATE_R2_BUCKET!
   const url = `${endpoint}/${bucket}/${objectKey}`
@@ -11,6 +11,7 @@ export default async function (objectKey: string, webStream: ReadableStream) {
       method: 'PUT',
       headers: {
         'Content-Type': contentType(lookup(objectKey) || 'application/octet-stream') || 'application/octet-stream',
+        'Content-Length': byteLength.toString(),
       },
       body: webStream,
     })

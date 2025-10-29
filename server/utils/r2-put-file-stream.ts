@@ -1,3 +1,5 @@
+import { consola } from 'consola'
+
 export default async function (objectKey: string, webStream: ReadableStream, opts: { contentType?: string; byteLength: number }) {
   const endpoint = process.env.NUXT_PRIVATE_R2_ENDPOINT!
   const bucket = process.env.NUXT_PRIVATE_R2_BUCKET!
@@ -7,6 +9,8 @@ export default async function (objectKey: string, webStream: ReadableStream, opt
 
   headers['Content-Type'] = opts.contentType || 'application/octet-stream'
   headers['Content-Length'] = opts.byteLength.toString()
+
+  consola.info(headers)
 
   const res = await r2Cdn.fetch(url, {
     method: 'PUT',

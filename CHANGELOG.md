@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.8
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.7...v0.3.8)
+
+### 🩹 Fixes
+
+- Improve caching logic and add content length handling for R2 uploads ([53a348e](https://github.com/algostract/unfiles/commit/53a348e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.7
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.6...v0.3.7)

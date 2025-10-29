@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.5
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.4...v0.3.5)
+
+### 🩹 Fixes
+
+- Update cache TTL to use environment variable for better configurability ([e324e6e](https://github.com/algostract/unfiles/commit/e324e6e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.4
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.3...v0.3.4)

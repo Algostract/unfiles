@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.4
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.3...v0.3.4)
+
+### 🚀 Enhancements
+
+- Add expiry-map for improved cache management ([a2faba5](https://github.com/algostract/unfiles/commit/a2faba5))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.3
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.2...v0.3.3)

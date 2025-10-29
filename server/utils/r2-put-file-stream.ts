@@ -14,10 +14,9 @@ export default async function (objectKey: string, webStream: ReadableStream, byt
         'Content-Type': contentType,
         'Content-Length': byteLength.toString(),
       },
-      body: new Blob([await new Response(webStream).blob()], { type: contentType }),
+      body: await new Response(webStream).blob(),
     })
   } catch (err) {
-    // Network/connection error -> reject fetch
     throw new Error('Failed to upload (network error)', { cause: err as unknown }) // ES2022 cause
   }
 

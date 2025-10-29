@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.9
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.8...v0.3.9)
+
+### 💅 Refactors
+
+- Storage stream saving to non stream saving ([e05f20a](https://github.com/algostract/unfiles/commit/e05f20a))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.8
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.7...v0.3.8)

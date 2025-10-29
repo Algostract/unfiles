@@ -132,7 +132,7 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     const [toStorage, toClient] = data.stream().tee()
     const [toDisk, toR2] = toStorage.tee()
 
-    r2PutFileStream(cacheKey, toR2, { contentType: data.contentType, byteLength: data.byteLength })
+    r2PutFileStream(cacheKey, toR2)
       .then(() => {
         consola.info('💾 Saved to R2 cache', { cacheKey, bytes: data.byteLength })
       })
@@ -140,8 +140,8 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       .then(() => {
         consola.info('💾 Saved to FS cache', { cacheKey, bytes: data.byteLength })
       })
-      .catch(() => {
-        consola.error('Failed to save to cache')
+      .catch((error) => {
+        consola.error('Failed to save to cache', error)
       })
 
     setResponseHeader(event, 'Content-Length', data.byteLength)

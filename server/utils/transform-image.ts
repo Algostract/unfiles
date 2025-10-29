@@ -1,4 +1,4 @@
-import consola from 'consola'
+// import { consola } from 'consola'
 import pMemoize from 'p-memoize'
 import PQueue from 'p-queue'
 import { createIPX, ipxFSStorage, ipxHttpStorage } from 'ipx'
@@ -28,7 +28,7 @@ const transform = pMemoize(
   (cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) =>
     queue.add(async () => {
       const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
-      consola.log('🛠️ Transform START', { source, modifiers })
+      // consola.log('🛠️ Transform START', { source, modifiers })
 
       const { data } = await ipx(source, modifiers).process()
       if (typeof data === 'string') {
@@ -39,7 +39,7 @@ const transform = pMemoize(
 
       const mime = (typeof modifiers.format === 'string' && (lookup(modifiers.format) || undefined)) || 'application/octet-stream'
 
-      consola.log('📦 Transform DONE', { cacheKey, bytes: buffer.byteLength })
+      // consola.log('📦 Transform DONE', { cacheKey, bytes: buffer.byteLength })
 
       return {
         stream: () => new Response(buffer).body!,

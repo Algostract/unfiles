@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { Writable } from 'node:stream'
 
@@ -8,5 +8,16 @@ export default async function (outPath: string, webStream: ReadableStream) {
 
   const file = createWriteStream(outPath)
   const webWritable = Writable.toWeb(file)
-  await webStream.pipeTo(webWritable)
+
+  try {
+    await webStream.pipeTo(webWritable)
+  } catch (err) {
+    file.destroy()
+    try {
+      await rm(outPath).catch(() => {})
+    } catch {
+      /* empty */
+    }
+    throw new Error(`Failed to write file: ${outPath}`, { cause: err as unknown })
+  }
 }

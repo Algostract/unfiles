@@ -1,27 +1,35 @@
-import { consola } from 'consola'
+import { lookup, contentType } from 'mime-types'
 
-export default async function (objectKey: string, webStream: ReadableStream, opts: { contentType?: string; byteLength: number }) {
+export default async function (objectKey: string, webStream: ReadableStream) {
   const endpoint = process.env.NUXT_PRIVATE_R2_ENDPOINT!
   const bucket = process.env.NUXT_PRIVATE_R2_BUCKET!
   const url = `${endpoint}/${bucket}/${objectKey}`
 
-  const headers: Record<string, string> = {}
-
-  headers['Content-Type'] = opts.contentType || 'application/octet-stream'
-  headers['Content-Length'] = opts.byteLength.toString()
-
-  consola.info(headers)
-
-  const res = await r2Cdn.fetch(url, {
-    method: 'PUT',
-    headers,
-    body: webStream,
-  })
-  if (!(res.ok && res.body)) {
-    throw createError({ statusCode: res.status, message: 'R2 CDN Upload failed' })
+  let res: Response
+  try {
+    res = await r2Cdn.fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType(lookup(objectKey) || 'application/octet-stream') || 'application/octet-stream',
+      },
+      body: webStream,
+    })
+  } catch (err) {
+    // Network/connection error -> reject fetch
+    throw new Error('Failed to upload (network error)', { cause: err as unknown }) // ES2022 cause
   }
 
-  return {
-    status: 'ok',
+  if (!res.ok) {
+    let bodyText = ''
+    try {
+      bodyText = await res.text()
+    } catch {
+      /* empty */
+    }
+    const reason = res.statusText || 'HTTP error'
+    const details = bodyText ? ` — ${bodyText.slice(0, 2000)}` : ''
+    throw new Error(`Failed to upload: ${res.status} ${reason}${details}`)
   }
+
+  return true
 }

@@ -35,6 +35,10 @@ coverage
 # Tauri files
 src-tauri
 
+# Static files
+static/**/*.*
+!static/**/*.gitkeep
+
 # Docker files
 .dockerignore
 Dockerfile

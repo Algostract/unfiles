@@ -94,6 +94,7 @@ export default defineNuxtConfig({
       siteUrl: '',
     },
     private: {
+      notionDbId: '',
       r2AccessKeyId: '',
       r2SecretAccessKey: '',
       r2Endpoint: '',
@@ -107,6 +108,7 @@ export default defineNuxtConfig({
       cloudreveR2Endpoint: '',
       cloudreveR2Bucket: '',
       cloudreveR2Region: '',
+      cloudreveR2PublicUrl: '',
     },
   },
   app: {

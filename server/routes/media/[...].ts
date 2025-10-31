@@ -102,6 +102,9 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       consola.success('✅ FS Cache HIT', { cacheKey, bytes: data.byteLength })
 
       console.timeEnd('transform-total')
+
+      Bun.gc()
+      consola.log('🧹 Garbage collection complete.')
       setResponseHeader(event, 'Content-Length', data.byteLength)
       return data.stream
     }
@@ -116,6 +119,9 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
       })
 
       console.timeEnd('transform-total')
+
+      Bun.gc()
+      consola.log('🧹 Garbage collection complete.')
       setResponseHeader(event, 'Content-Length', data.byteLength)
       return toClient
     }
@@ -130,13 +136,19 @@ export default defineEventHandler<Promise<ReadStream | ReadableStream>>(async (e
     const data = await transformImage(cacheKey, mappedSource, modifiers)
 
     console.timeEnd('transform-total')
+
+    Bun.gc()
+    consola.log('🧹 Garbage collection complete.')
     setResponseHeader(event, 'Content-Length', data.byteLength)
     return data.stream
   } catch (error) {
     if (error instanceof Error && 'statusCode' in error) {
       throw error
     }
-    console.error('Route media GET', error)
+
+    Bun.gc()
+    consola.log('🧹 Garbage collection complete.')
+    consola.error('Route media GET', error)
     throw createError({ statusCode: 500, message: 'Some Unknown Error Found' })
   }
 })

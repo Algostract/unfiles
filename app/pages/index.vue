@@ -5,15 +5,15 @@ const view = ref<'grid' | 'list'>('grid')
 
 const sortItems = ['Relevance', 'Newest', 'Oldest'] as const
 
-const { data: media } = await useFetch('/api/media')
+const { data: project } = await useFetch('/api/project')
 
-if (!media.value) {
+if (!project.value) {
   throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true })
 }
 
-const filteredMedia = computed(() => {
+const filteredProjects = computed(() => {
   const q = query.value.trim().toLowerCase()
-  let arr = media.value?.filter(({ name }) => name.toLowerCase().includes(q)) ?? []
+  let arr = project.value?.filter(({ name }) => name.toLowerCase().includes(q)) ?? []
   if (sort.value === 'Newest') arr = [...arr].reverse()
   if (sort.value === 'Oldest') arr = [...arr]
   return arr
@@ -135,15 +135,22 @@ function uploadFiles(files?: File[]) {
       </div>
 
       <!-- Count -->
-      <p class="mt-6 text-sm text-neutral-500 dark:text-neutral-400">Showing {{ filteredMedia?.length }} items</p>
+      <p class="mt-6 text-sm text-neutral-500 dark:text-neutral-400">Showing {{ filteredProjects?.length }} items</p>
 
       <!-- Grid/List -->
-      <div v-if="view === 'grid'" class="mt-4 grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        <ImageCard v-for="mediaItem in filteredMedia" :key="mediaItem.id" view="grid" :media="mediaItem" />
+      <div v-if="view === 'grid'" class="flex flex-col gap-12">
+        <div v-for="filteredProject in filteredProjects" :key="filteredProject.id" class="mt-4 grid gap-6 bg-light-500 p-8 dark:bg-dark-500">
+          <h1>{{ filteredProject.name }}</h1>
+          <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <ImageCard v-for="mediaItem in filteredProject.media" :key="mediaItem.id" view="grid" :media="mediaItem" />
+          </div>
+        </div>
       </div>
 
       <div v-else class="mt-4 space-y-4">
-        <ImageCard v-for="mediaItem in filteredMedia" :key="mediaItem.id" view="list" :media="mediaItem" />
+        <div v-for="filteredProject in filteredProjects" :key="filteredProject.id">
+          <ImageCard v-for="mediaItem in filteredProject.media" :key="mediaItem.id" view="list" :media="mediaItem" />
+        </div>
       </div>
     </div>
     <FileUpload :show="showFileUpload" @close="uploadFiles" />

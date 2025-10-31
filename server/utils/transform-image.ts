@@ -10,9 +10,9 @@ const ipx = createIPX({
 
 const queue = new PQueue({
   // Limit concurrency to avoid multiple large in-memory buffers at once.
-  concurrency: parseInt(process.env.TRANSFORM_CONCURRENCY || '2'),
-  intervalCap: parseInt(process.env.RATE_LIMIT_INTERVAL_CAP || '5'),
-  interval: parseInt(process.env.RATE_LIMIT_INTERVAL || '1000'),
+  concurrency: parseInt(import.meta.env.TRANSFORM_CONCURRENCY || '2'),
+  intervalCap: parseInt(import.meta.env.RATE_LIMIT_INTERVAL_CAP || '5'),
+  interval: parseInt(import.meta.env.RATE_LIMIT_INTERVAL || '1000'),
 })
 
 function ensureBuffer(input: Buffer | Uint8Array | ArrayBuffer): Buffer {
@@ -23,7 +23,7 @@ function ensureBuffer(input: Buffer | Uint8Array | ArrayBuffer): Buffer {
 
 const transform = (cacheKey: string, mappedSource: string, modifiers: Record<string, string | number | boolean>) =>
   queue.add(async () => {
-    const source = `${process.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
+    const source = `${import.meta.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mappedSource)}`
     // consola.log('🛠️ Transform START', { source, modifiers })
 
     const { data } = await ipx(source, modifiers).process()

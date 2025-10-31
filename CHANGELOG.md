@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.3.14...v0.4.0)
+
+### 🚀 Enhancements
+
+- ⚠️ Add Notion integration and media management features ([eb758dd](https://github.com/algostract/unfiles/commit/eb758dd))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Add Notion integration and media management features ([eb758dd](https://github.com/algostract/unfiles/commit/eb758dd))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.3.14
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.13...v0.3.14)

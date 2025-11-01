@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.1
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.0...v0.5.1)
+
+### 💅 Refactors
+
+- Concurrency limit moved to env variable ([5cead9b](https://github.com/algostract/unfiles/commit/5cead9b))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.0
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.4.0...v0.5.0)

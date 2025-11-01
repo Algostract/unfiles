@@ -26,6 +26,7 @@ export default async function (args: string) {
     else if (rawKey === 'h') key = 'h'
     else if (rawKey === 'fit') key = 'fit'
     else if (rawKey === 'dpr') key = 'dpr'
+    else if (rawKey === 'c') key = 'codec'
 
     // Booleans (no value) → set to "true"
     if (!value && ['flip', 'flop', 'grayscale', 'flatten', 'normalize', 'animated', 'negate'].includes(key)) {

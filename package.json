@@ -59,6 +59,7 @@
     "aws4fetch": "^1.0.20",
     "consola": "^3.4.2",
     "eslint": "^9.38.0",
+    "execa": "^9.6.0",
     "mime-types": "^3.0.1",
     "nuxt": "^4.2.0",
     "nuxt-auth-utils": "^0.5.25",

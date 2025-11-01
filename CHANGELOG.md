@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.4.0...v0.5.0)
+
+### 🚀 Enhancements
+
+- ⚠️ Added video transformation and queue logic ([7498067](https://github.com/algostract/unfiles/commit/7498067))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️ Added video transformation and queue logic ([7498067](https://github.com/algostract/unfiles/commit/7498067))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.4.0
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.3.14...v0.4.0)

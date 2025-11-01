@@ -1,4 +1,3 @@
-import consola from 'consola'
 import mime from 'mime-types'
 import { createWriteStream } from 'node:fs'
 import { Writable } from 'node:stream'
@@ -8,7 +7,6 @@ export default async function (payload: Record<string, string>): Promise<{
   contentType: string
   byteLength: number
 }> {
-  console.time('transform-total')
   const cacheKey = payload.cacheKey as unknown as string
   const mediaOriginId = payload.mediaOriginId as unknown as string
   const modifiers = payload.modifiers as unknown as Record<string, string | number | boolean>
@@ -43,10 +41,6 @@ export default async function (payload: Record<string, string>): Promise<{
   // - one stream written to disk
   // Convert to Uint8Array for a clean BodyInit type for the runtime fetch/Response
 
-  Bun.gc()
-  consola.log('🧹 Garbage collection complete.')
-
-  console.timeEnd('transform-total')
   return {
     streamPath: cachePath,
     byteLength,

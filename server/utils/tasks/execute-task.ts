@@ -11,16 +11,16 @@ const inflight = new Map<string, Promise<any>>() // key -> running promise
 function getQueue(name: string) {
   let q = queues.get(name)
   if (!q) {
-    q = new PQueue({ concurrency: 1 })
+    q = new PQueue({ concurrency: parseInt(import.meta.env.CONCURRENCY_LIMIT || '1') })
     queues.set(name, q)
-    consola.info(`🧵 [${name}] queue created (concurrency=1)`)
+    consola.debug(`🧵 [${name}] queue created (concurrency=${parseInt(import.meta.env.CONCURRENCY_LIMIT || '1')})`)
 
     // Helpful lifecycle consolas
     q.on('empty', () => {
-      consola.info(`📭 [${name}] queue empty (size=${q!.size}, pending=${q!.pending})`)
+      consola.debug(`📭 [${name}] queue empty (size=${q!.size}, pending=${q!.pending})`)
     })
     q.on('idle', () => {
-      consola.info(`💤 [${name}] queue idle (size=${q!.size}, pending=${q!.pending})`)
+      consola.debug(`💤 [${name}] queue idle (size=${q!.size}, pending=${q!.pending})`)
     })
     // Not all versions expose 'pendingZero', keep the two above for portability
   }
@@ -39,7 +39,7 @@ export default async function <T>(name: string, { payload }: { payload?: Record<
   // Return same promise if identical job is already running
   const existing = inflight.get(key) as Promise<T> | undefined
   if (existing) {
-    consola.info(`🔁 [${name}] dedupe hit for key=${key}`)
+    consola.debug(`🔁 [${name}] dedupe hit for key=${key}`)
     const result = await existing
     consola.success(`🟢 [${name}] deduped result resolved for key=${key}`)
     return { result }
@@ -74,7 +74,9 @@ export default async function <T>(name: string, { payload }: { payload?: Record<
       })
     } finally {
       inflight.delete(key)
-      consola.info(`🧹 [${name}] cleanup key=${key} (size=${queue.size}, pending=${queue.pending})`)
+      consola.debug(`🧹 [${name}] cleanup key=${key} (size=${queue.size}, pending=${queue.pending})`)
+      Bun.gc()
+      consola.log('🧹 Garbage collection complete.')
     }
   })()
 

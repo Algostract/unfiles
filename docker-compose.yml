@@ -11,9 +11,9 @@ services:
       - data:/app/.data
     ports:
       - '3500:3000'
-    cpus: '8' # limit to 0.4 CPU
-    mem_limit: 4056M # hard memory cap
-    mem_reservation: 512M # soft memory reservation
+    # cpus: '16' # limit to 0.4 CPU
+    # mem_limit: 4056M # hard memory cap
+    # mem_reservation: 512M # soft memory reservation
 
 volumes:
   static:

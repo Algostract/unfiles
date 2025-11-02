@@ -1,5 +1,6 @@
-import consola from 'consola'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import PQueue from 'p-queue'
+import consola from 'consola'
 import mimeTypes from 'mime-types'
 
 // function extractUuid(input: string): string | undefined {
@@ -9,13 +10,12 @@ import mimeTypes from 'mime-types'
 // }
 
 export type CloudreveFile = {
-  type: number
+  type: number // 0=file, 1=folder
   id: string
   name: string
   size: number
   metadata?: Record<string, string>
-  path: string
-  directUrl?: string
+  path: string // Cloudreve file URI
 }
 
 type ListResponse = {
@@ -23,83 +23,169 @@ type ListResponse = {
   msg?: string
   data?: { files: CloudreveFile[] }
 }
-async function getFinalLink(initialUrl: string): Promise<string | undefined> {
+
+type InfoResponse = {
+  code: number
+  msg?: string
+  data?: any // contains extended_info?.direct_links when extended=true
+}
+
+type Options = {
+  pageSize?: number
+  maxDepth?: number
+  listConcurrency?: number
+  linkConcurrency?: number
+  retries?: number
+  retryBaseMs?: number
+  logEveryN?: number
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+function backoffDelay(attempt: number, base: number) {
+  // exponential with jitter
+  const exp = base * Math.pow(2, attempt)
+  return Math.min(exp, 30_000) * (0.5 + Math.random())
+}
+
+async function withRetry<T>(fn: () => Promise<T>, { retries = 4, base = 300, label }: { retries?: number; base?: number; label?: string } = {}): Promise<T> {
+  let lastErr: any
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn()
+    } catch (err: any) {
+      lastErr = err
+      const status = err?.status || err?.response?.status
+      const retryAfter = err?.response?.headers?.get?.('retry-after') || err?.headers?.get?.('retry-after')
+      if (i === retries) break
+      // Retry on 429/5xx or network errors
+      if (status && status < 500 && status !== 429) throw err
+      const wait = retryAfter ? Number(retryAfter) * 1000 : backoffDelay(i, base)
+      consola.warn(`${label || 'retry'} attempt=${i + 1} wait=${Math.round(wait)}ms status=${status || 'n/a'}`)
+      await sleep(wait)
+    }
+  }
+  throw lastErr
+}
+
+// Resolve to the final URL after redirects; prefer HEAD to skip bodies and fall back to GET if necessary.
+async function resolveFinalUrl(initialUrl: string): Promise<string> {
+  // HEAD first
+  let res = await fetch(initialUrl, { method: 'HEAD', redirect: 'follow' })
+  if (res.status === 405 || res.status === 403 || res.status === 400) {
+    res = await fetch(initialUrl, { method: 'GET', redirect: 'follow' })
+  }
+  // Some environments may have edge-case redirect handling; GET fallback covers most practical servers.
+  return res.url
+}
+
+// Extract bucket relative path by removing the first path segment (bucket name).
+function toBucketRelativePath(finalUrl: string): string | undefined {
+  const url = new URL(finalUrl)
+  const pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+  const parts = pathname.split('/')
+  if (parts.length < 2) return undefined
+  return parts.slice(1).join('/')
+}
+
+export async function getFinalLink(initialUrl: string): Promise<string | undefined> {
   try {
-    let response: Response
-    response = await fetch(initialUrl, {
-      method: 'HEAD',
-      redirect: 'follow',
-    })
-
-    if (!response.url.includes('uploads'))
-      response = await fetch(initialUrl, {
-        method: 'GET',
-        redirect: 'follow',
-      })
-
-    const url = new URL(response.url)
-    // Remove leading '/' from pathname
-    let pathname = url.pathname
-    if (pathname.startsWith('/')) pathname = pathname.slice(1)
-
-    // Find bucket name: first path segment (e.g. 'red-cat-pictures-cloudreve-1')
-    const parts = pathname.split('/')
-    if (parts.length < 2) return undefined
-
-    // Remove bucket name; join the rest back into path
-    const bucketRelativePath = parts.slice(1).join('/')
-    return bucketRelativePath
+    const finalUrl = await resolveFinalUrl(initialUrl)
+    return toBucketRelativePath(finalUrl)
   } catch (err) {
-    consola.warn(err)
+    consola.warn('final-link error', err)
     return undefined
   }
 }
 
-async function getDirectBucketLink(api: $Fetch<ListResponse, string>, cloudreveUri: string): Promise<string | undefined> {
-  // 1. Query Cloudreve for file info
-  const infoRes = await api('/file/info', {
-    method: 'GET',
-    query: { uri: cloudreveUri, extended: true },
-  })
-  // 2. Get direct link from response
-  const directUrl = infoRes.data?.extended_info?.direct_links?.[0]?.url
-  return directUrl ? await getFinalLink(directUrl) : undefined
+export async function getDirectBucketLink(api: $Fetch<InfoResponse, string>, cloudreveUri: string): Promise<string | undefined> {
+  const infoRes = await withRetry(
+    () =>
+      api('/file/info', {
+        method: 'GET',
+        query: { uri: cloudreveUri, extended: true },
+      }),
+    { label: 'file/info' }
+  )
+  const directUrl = infoRes?.data?.extended_info?.direct_links?.[0]?.url as string | undefined
+  if (!directUrl) return undefined
+  return await getFinalLink(directUrl)
 }
 
-async function fetchFilesRecursively(api: $Fetch<ListResponse, string>, rootUri: string, page_size: number, maxDepth: number): Promise<CloudreveFileWithDirectUrl[]> {
+type CloudreveFileWithDirectUrl = CloudreveFile & { directUrl?: string }
+
+async function fetchFilesRecursively(api: $Fetch<ListResponse, string>, rootUri: string, opt: Options = {}): Promise<CloudreveFileWithDirectUrl[]> {
+  const { pageSize = 200, maxDepth = 5, listConcurrency = 6, linkConcurrency = 20, retries = 4, retryBaseMs = 300, logEveryN = 200 } = opt
+
+  consola.info(`Start list root=${rootUri} pageSize=${pageSize} maxDepth=${maxDepth} listC=${listConcurrency} linkC=${linkConcurrency}`)
+
+  const listQ = new PQueue({ concurrency: listConcurrency })
+  const linkQ = new PQueue({ concurrency: linkConcurrency })
+
   const files: CloudreveFile[] = []
-  const queue: Array<{ uri: string; depth: number }> = [{ uri: rootUri, depth: 0 }]
-  while (queue.length) {
-    const { uri, depth } = queue.shift()!
-    consola.log(`📂 Enter folder(depth=${depth}): ${uri} | pending: ${queue.length}`)
+  const seenDirs = new Set<string>()
+  let listedDirs = 0
+  let foundFiles = 0
+
+  async function listOneDir(uri: string, depth: number) {
+    if (seenDirs.has(uri)) return
+    seenDirs.add(uri)
     let page = 0
+    listedDirs++
     while (true) {
-      consola.log(`📄 Listing page ${page} for ${uri}`)
-      const res = await api('/file', { method: 'GET', query: { uri, page, page_size } })
+      const res = await withRetry(() => api('/file', { method: 'GET', query: { uri, page, page_size: pageSize } }), { retries, base: retryBaseMs, label: 'list' })
       if (res.code !== 0) {
-        consola.error(`❌ List error @ ${uri} p${page}: ${res.msg || 'unknown'}`)
-        throw createError({ statusCode: 502, statusMessage: res.msg || 'Cloudreve list error' })
+        throw Object.assign(new Error(res.msg || 'Cloudreve list error'), {
+          status: 502,
+        })
       }
-      const batch = res.data?.files || []
-      files.push(...batch.filter((f) => f.type === 0))
+      const batch = res.data?.files ?? []
+      const fileItems = batch.filter((f) => f.type === 0)
+      const dirItems = batch.filter((f) => f.type === 1)
+      files.push(...fileItems)
+      foundFiles += fileItems.length
+
+      if (foundFiles % logEveryN === 0) {
+        consola.info(`Listed files=${foundFiles} dirs=${listedDirs} depth=${depth} page=${page}`)
+      }
+
       if (depth < maxDepth) {
-        queue.push(...batch.filter((f) => f.type === 1).map((f) => ({ uri: f.path, depth: depth + 1 })))
+        for (const d of dirItems) {
+          listQ.add(() => listOneDir(d.path, depth + 1))
+        }
       }
-      if (batch.length < page_size) break
-      page += 1
+      if (batch.length < pageSize) break
+      page++
     }
   }
-  // For each file, fetch the direct bucket link (serially for clarity, batch for speed)
-  const pQueue = new PQueue({ concurrency: 20 })
-  return await Promise.all(
-    files.map((file) =>
-      pQueue.add(async () => {
-        const directUrl = await getDirectBucketLink(api, file.path)
-        console.log('📂 Direct Link of file', file.path, directUrl)
-        return { ...file, directUrl }
+
+  await listQ.add(() => listOneDir(rootUri, 0))
+  await listQ.onIdle()
+
+  consola.info(`Listing done: files=${foundFiles} uniqueDirs=${listedDirs}`)
+
+  const out: CloudreveFileWithDirectUrl[] = new Array(files.length)
+  let resolved = 0
+
+  await Promise.all(
+    files.map((file, idx) =>
+      linkQ.add(async () => {
+        const directUrl = await withRetry(() => getDirectBucketLink(api as any, file.path), { retries, base: retryBaseMs, label: 'direct' }).catch((err) => {
+          consola.warn(`direct-link fail path=${file.path}`, err)
+          return undefined
+        })
+        resolved++
+        if (resolved % logEveryN === 0) {
+          consola.info(`Resolved direct links ${resolved}/${files.length}`)
+        }
+        out[idx] = { ...file, directUrl }
       })
     )
   )
+
+  await linkQ.onIdle()
+  consola.info(`All direct links resolved: total=${files.length}`)
+  return out
 }
 
 async function getDriveItemBucketPath(folder: string): Promise<Map<string, string>> {
@@ -110,7 +196,7 @@ async function getDriveItemBucketPath(folder: string): Promise<Map<string, strin
     headers: { Authorization: `Bearer ${config.private.cloudreveApiToken}` },
   })
 
-  const res = await fetchFilesRecursively(api, folder, 1000, 100)
+  const res = await fetchFilesRecursively(api, folder)
 
   for (const file of res) {
     if (file.type === 1) {
@@ -224,7 +310,7 @@ export default defineCachedEventHandler<
       }[]
     }[]
   },
-  { maxAge: 60 * 10 }
+  { swr: true, staleMaxAge: 60 * 20 }
 )
 
 /* 

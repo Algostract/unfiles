@@ -75,8 +75,11 @@ export default async function <T>(name: string, { payload }: { payload?: Record<
     } finally {
       inflight.delete(key)
       consola.debug(`🧹 [${name}] cleanup key=${key} (size=${queue.size}, pending=${queue.pending})`)
-      Bun.gc()
-      consola.log('🧹 Garbage collection complete.')
+
+      if (Bun) {
+        Bun?.gc()
+        consola.log('🧹 Garbage collection complete.')
+      }
     }
   })()
 

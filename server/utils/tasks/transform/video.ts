@@ -14,21 +14,26 @@ export default async function (payload: Record<string, string>): Promise<{
   const fs = useStorage('fs')
   const config = useRuntimeConfig()
 
-  const source = `${encodeURI(mediaOriginId)}`
+  const mediaId = encodeURI(mediaOriginId).replaceAll('/', '_')
+  const source = `source/${mediaId}`
   // consola.log('🛠️ Transform START', { source, modifiers })
 
   // check if file already exists
-  if (!(await fs.hasItem(source.replaceAll('/', '_')))) {
-    const { stream } = await r2GetFileStream(source, config.private.cloudreveR2Endpoint, config.private.cloudreveR2Bucket) // Web ReadableStream<Uint8Array>
-    await stream.pipeTo(Writable.toWeb(createWriteStream(`./static/${source.replaceAll('/', '_')}`)))
+  if (!(await fs.hasItem(source))) {
+    const { stream } = await r2GetFileStream(encodeURI(mediaOriginId), config.private.cloudreveR2Endpoint, config.private.cloudreveR2Bucket) // Web ReadableStream<Uint8Array>
+    await stream.pipeTo(Writable.toWeb(createWriteStream(`./static/${source}`)))
   }
 
   await transcodeVideo(
-    `./static/${source.replaceAll('/', '_')}`,
+    `./static/${source}`,
     cachePath,
     { width: parseInt((modifiers.w as string) ?? '1080'), height: parseInt((modifiers.h as string) ?? '1080') },
     (modifiers.codec as 'avc' | 'vp9' | 'hevc' | 'av1') ?? 'av1',
-    'cpu'
+    modifiers.quality as number,
+    'cpu',
+    (info) => {
+      console.info(info)
+    }
   )
   const metaData = await fs.getMeta(cacheKey)
   const byteLength = metaData.size as number

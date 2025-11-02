@@ -1,15 +1,21 @@
 import mime from 'mime-types'
-import { createIPX, ipxFSStorage, ipxHttpStorage } from 'ipx'
+import { createIPX, ipxFSStorage } from 'ipx'
+import { createWriteStream } from 'node:fs'
+import { Writable } from 'node:stream'
 
 const ipx = createIPX({
   storage: ipxFSStorage({ dir: './static' }),
-  httpStorage: ipxHttpStorage({ allowAllDomains: true }),
 })
 
 function ensureBuffer(input: Buffer | Uint8Array | ArrayBuffer): Buffer {
   if (Buffer.isBuffer(input)) return input
   if (input instanceof ArrayBuffer) return Buffer.from(new Uint8Array(input))
   return Buffer.from(input)
+}
+
+export function isVideoPath(path: string): boolean {
+  const type = mime.lookup(path) // e.g. "application/mp4" | "video/mp4" | null
+  return typeof type === 'string' && (type.startsWith('video/') || type === 'application/mp4')
 }
 
 export default async function (payload: Record<string, string>): Promise<{
@@ -22,12 +28,25 @@ export default async function (payload: Record<string, string>): Promise<{
   const modifiers = payload.modifiers as unknown as Record<string, string | number | boolean>
   const cachePath = `./static/${cacheKey}`
   const fs = useStorage('fs')
+  const config = useRuntimeConfig()
 
-  const source = `${import.meta.env.NUXT_PRIVATE_CLOUDREVE_R2_PUBLIC_URL}/${encodeURI(mediaOriginId)}`
-  // consola.log('🛠️ Transform START', { source, modifiers })
+  const mediaId = encodeURI(mediaOriginId).replaceAll('/', '_')
+  const source = `source/${mediaId}`
+  // console.log('🛠️ Transform START', { source, modifiers })
 
   // check if file already exists
-  const { data } = await ipx(source, modifiers).process()
+  if (!(await fs.hasItem(source))) {
+    const { stream } = await r2GetFileStream(encodeURI(mediaOriginId), config.private.cloudreveR2Endpoint, config.private.cloudreveR2Bucket) // Web ReadableStream<Uint8Array>
+    await stream.pipeTo(Writable.toWeb(createWriteStream(`./static/${source}`)))
+  }
+
+  const isVideo = isVideoPath(`./static/${source}`)
+  if (isVideo) {
+    await ensureDir(`./static/thumbnail/${mediaId}`)
+    await generateThumbnail(`./static/${source}`, `./static/thumbnail`, '00:00:00.500')
+  }
+
+  const { data } = await ipx(isVideo ? `thumbnail/${mediaId.replace(/\.[^/.]+$/, '.jpg')}` : source, modifiers).process()
   if (typeof data === 'string') {
     throw createError({ statusCode: 500, message: 'data is a string' })
   }

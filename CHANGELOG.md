@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.3
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.2...v0.5.3)
+
+### 🩹 Fixes
+
+- Range streaming ([1445a5e](https://github.com/algostract/unfiles/commit/1445a5e))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.2
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.1...v0.5.2)

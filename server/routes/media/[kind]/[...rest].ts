@@ -3,6 +3,7 @@ import consola from 'consola'
 import mime from 'mime-types'
 import { hash } from 'ohash'
 import type { H3Event, EventHandlerRequest } from 'h3'
+import type { ReadStream } from 'node:fs'
 import { createReadStream } from 'node:fs'
 import { Readable } from 'node:stream'
 
@@ -220,42 +221,62 @@ export default defineEventHandler(async (event) => {
       modifiers.codec = !modifiers.codec || modifiers.codec === 'auto' ? codec : modifiers.codec
       // consola.log('⚙️ Video Modifiers', modifiers)
 
+      const SLICE_MAX = 2 * 1024 * 1024
+      const CODEC_MAP = {
+        av1: 'av1',
+        vp9: 'vp9, vorbis',
+        avc: 'avc1.42E01E, mp4a.40.2',
+        theora: 'theora, vorbis',
+      }
+
+      const rangeHeader = getRequestHeader(event, 'range')
       const mimeType = `video/${modifiers.format}`
-      const codecDetail =
-        modifiers.codec === 'av1'
-          ? 'av1'
-          : modifiers.codec === 'vp9'
-            ? 'vp9, vorbis'
-            : modifiers.codec === 'avc'
-              ? 'avc1.42E01E, mp4a.40.2'
-              : modifiers.codec === 'theora'
-                ? 'theora, vorbis'
-                : modifiers.codec
+
+      const codecDetail = modifiers?.codec ? CODEC_MAP[modifiers.codec as 'av1' | 'vp9' | 'avc' | 'theora'] : ''
       const contentType = `${mimeType}; codecs="${codecDetail}"`
       setResponseHeaders(event, {
         'accept-ranges': 'bytes',
         'content-type': contentType,
       })
 
-      const cacheKey = buildCacheKey({ kind, source: mediaId, args, ext: 'mp4' })
+      const cacheKey = buildCacheKey({ kind, source: mediaId, args, ext: modifiers.format as string })
       const cachePath = `./static/${cacheKey}`
 
       // FS cache
       if (await fs.hasItem(cacheKey)) {
         const metaData = await fs.getMeta(cacheKey)
-        const { chunkStart, chunkEnd, chunkSize } = getChunkRange(event, metaData.size as number)
+        const byteLength = metaData.size as number
 
-        setResponseHeaders(event, {
-          'content-length': chunkSize,
-          'content-range': `bytes ${chunkStart}-${chunkEnd}/${metaData.size}`,
-        })
+        const data: {
+          stream?: ReadStream
+          contentType?: string
+          byteLength?: number
+        } = {}
 
-        if (chunkSize !== metaData.size) setResponseStatus(event, 206)
+        if (!rangeHeader) {
+          setResponseHeaders(event, {
+            'content-length': byteLength,
+          })
 
-        const data = {
-          stream: createReadStream(cachePath, { start: chunkStart, end: chunkEnd }),
-          contentType,
-          byteLength: chunkSize,
+          data.stream = createReadStream(cachePath)
+          data.contentType = contentType
+          data.byteLength = byteLength
+        } else {
+          const { chunkStart: reqStart, chunkEnd: reqEnd } = getChunkRange(event, byteLength)
+          const start = reqStart
+          const end = Math.min(reqEnd ?? byteLength - 1, start + SLICE_MAX - 1, byteLength - 1)
+          const length = end - start + 1
+
+          setResponseStatus(event, 206)
+
+          setResponseHeaders(event, {
+            'content-length': length,
+            'content-range': `bytes ${start}-${end}/${byteLength}`,
+          })
+
+          data.stream = createReadStream(cachePath, { start, end })
+          data.contentType = contentType
+          data.byteLength = length
         }
 
         consola.success('✅ Video FS Cache HIT', { cacheKey, bytes: data.byteLength })
@@ -267,27 +288,47 @@ export default defineEventHandler(async (event) => {
         const { stream, byteLength } = await r2GetFileStream(cacheKey)
         const [diskStream, clientStream] = stream.tee()
 
-        const { chunkStart, chunkEnd, chunkSize } = getChunkRange(event, byteLength)
+        const rangeHeader = getRequestHeader(event, 'range')
 
-        setResponseHeaders(event, {
-          'content-length': chunkSize,
-          'content-range': `bytes ${chunkStart}-${chunkEnd}/${byteLength}`,
-        })
+        const data: {
+          stream?: ReadableStream
+          contentType?: string
+          byteLength?: number
+        } = {}
 
-        if (chunkSize !== byteLength) setResponseStatus(event, 206)
+        if (!rangeHeader) {
+          setResponseHeaders(event, {
+            'content-length': byteLength,
+          })
 
-        const data = {
-          stream: clientStream.pipeThrough(streamRangeSlice(chunkStart, chunkEnd)),
-          contentType,
-          byteLength: chunkSize,
+          data.stream = clientStream
+          data.contentType = contentType
+          data.byteLength = byteLength
+        } else {
+          const { chunkStart: reqStart, chunkEnd: reqEnd } = getChunkRange(event, byteLength)
+          const start = reqStart
+          const end = Math.min(reqEnd ?? byteLength - 1, start + SLICE_MAX - 1, byteLength - 1)
+          const length = end - start + 1
+
+          setResponseStatus(event, 206)
+
+          setResponseHeaders(event, {
+            'content-length': length,
+            'content-range': `bytes ${start}-${end}/${byteLength}`,
+          })
+
+          data.stream = clientStream.pipeThrough(streamRangeSlice(start, end))
+          data.contentType = contentType
+          data.byteLength = length
         }
 
+        // Save to FS cache in background
         diskPutFileStream(cachePath, diskStream).then(() => {
           consola.info('💾 Video Saved to FS cache', { cacheKey, bytes: data.byteLength })
         })
 
         consola.success('✅ Video R2 Cache HIT', { cacheKey, bytes: data.byteLength })
-        return data.stream
+        return data.stream as ReadableStream
       }
 
       const mediaOriginId = (await syncDrive())[mediaId]

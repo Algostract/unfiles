@@ -14,7 +14,7 @@ function ensureBuffer(input: Buffer | Uint8Array | ArrayBuffer): Buffer {
 }
 
 export function isVideoPath(path: string): boolean {
-  const type = mime.lookup(path) // e.g. "application/mp4" | "video/mp4" | null
+  const type = mime.lookup(path)
   return typeof type === 'string' && (type.startsWith('video/') || type === 'application/mp4')
 }
 
@@ -32,6 +32,7 @@ export default async function (payload: Record<string, string>): Promise<{
 
   const mediaId = encodeURI(mediaOriginId).replaceAll('/', '_')
   const source = `source/${mediaId}`
+  await ensureDir('./static/source')
   // console.log('🛠️ Transform START', { source, modifiers })
 
   // check if file already exists

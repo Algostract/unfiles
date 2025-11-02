@@ -16,6 +16,7 @@ export default async function (payload: Record<string, string>): Promise<{
 
   const mediaId = encodeURI(mediaOriginId).replaceAll('/', '_')
   const source = `source/${mediaId}`
+  await ensureDir('./static/source')
   // consola.log('🛠️ Transform START', { source, modifiers })
 
   // check if file already exists

@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.4
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.3...v0.5.4)
+
+### 🏡 Chore
+
+- Deps updates ([250d1b3](https://github.com/algostract/unfiles/commit/250d1b3))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.3
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.2...v0.5.3)

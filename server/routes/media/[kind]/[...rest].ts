@@ -36,11 +36,13 @@ function supportsMimeType(mime: string, accept: string) {
 
 function negotiateImageFormat(event: H3Event<EventHandlerRequest>): { format: 'avif' | 'webp' | 'jpeg' } {
   let format: 'avif' | 'webp' | 'jpeg' = 'jpeg'
+
   const acceptHeader = getRequestHeader(event, 'accept') || ''
   const accept = (acceptHeader || '').toLowerCase()
+
   if (supportsMimeType('image/avif', accept)) format = 'avif'
-  if (supportsMimeType('image/webp', accept)) format = 'webp'
-  // fallback when image/* or */* is present
+  else if (supportsMimeType('image/webp', accept)) format = 'webp'
+
   return { format }
 }
 

@@ -21,7 +21,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ./static
+      device: ./static/red-cat-pictures
 
   data:
     driver: local

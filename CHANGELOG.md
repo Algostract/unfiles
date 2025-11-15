@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.5
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.4...v0.5.5)
+
+### 🩹 Fixes
+
+- Seekable byte range ([93bf132](https://github.com/algostract/unfiles/commit/93bf132))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.4
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.3...v0.5.4)

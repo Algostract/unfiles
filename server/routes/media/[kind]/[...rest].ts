@@ -223,18 +223,17 @@ export default defineEventHandler(async (event) => {
       modifiers.codec = !modifiers.codec || modifiers.codec === 'auto' ? codec : modifiers.codec
       // consola.log('⚙️ Video Modifiers', modifiers)
 
-      const SLICE_MAX = 2 * 1024 * 1024
       const CODEC_MAP = {
         av1: 'av1',
+        hevc: 'hvc1, mp4a.40.2',
         vp9: 'vp9, vorbis',
         avc: 'avc1.42E01E, mp4a.40.2',
-        theora: 'theora, vorbis',
       }
 
       const rangeHeader = getRequestHeader(event, 'range')
       const mimeType = `video/${modifiers.format}`
 
-      const codecDetail = modifiers?.codec ? CODEC_MAP[modifiers.codec as 'av1' | 'vp9' | 'avc' | 'theora'] : ''
+      const codecDetail = modifiers?.codec ? CODEC_MAP[modifiers.codec as 'av1' | 'hevc' | 'vp9' | 'avc'] : ''
       const contentType = `${mimeType}; codecs="${codecDetail}"`
       setResponseHeaders(event, {
         'accept-ranges': 'bytes',
@@ -260,13 +259,14 @@ export default defineEventHandler(async (event) => {
             'content-length': byteLength,
           })
 
+          if (event.method === 'HEAD') {
+            return
+          }
           data.stream = createReadStream(cachePath)
           data.contentType = contentType
           data.byteLength = byteLength
         } else {
-          const { chunkStart: reqStart, chunkEnd: reqEnd } = getChunkRange(event, byteLength)
-          const start = reqStart
-          const end = Math.min(reqEnd ?? byteLength - 1, start + SLICE_MAX - 1, byteLength - 1)
+          const { chunkStart: start, chunkEnd: end } = getChunkRange(event, byteLength)
           const length = end - start + 1
 
           setResponseStatus(event, 206)
@@ -276,6 +276,9 @@ export default defineEventHandler(async (event) => {
             'content-range': `bytes ${start}-${end}/${byteLength}`,
           })
 
+          if (event.method === 'HEAD') {
+            return
+          }
           data.stream = createReadStream(cachePath, { start, end })
           data.contentType = contentType
           data.byteLength = length
@@ -307,9 +310,7 @@ export default defineEventHandler(async (event) => {
           data.contentType = contentType
           data.byteLength = byteLength
         } else {
-          const { chunkStart: reqStart, chunkEnd: reqEnd } = getChunkRange(event, byteLength)
-          const start = reqStart
-          const end = Math.min(reqEnd ?? byteLength - 1, start + SLICE_MAX - 1, byteLength - 1)
+          const { chunkStart: start, chunkEnd: end } = getChunkRange(event, byteLength)
           const length = end - start + 1
 
           setResponseStatus(event, 206)
@@ -339,6 +340,10 @@ export default defineEventHandler(async (event) => {
       }
 
       consola.warn('⚠️ Video Cache MISS', { cacheKey })
+
+      if (event.method === 'HEAD') {
+        return
+      }
 
       const { result: data } = await executeTask<{
         streamPath: string

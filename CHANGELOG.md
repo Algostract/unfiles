@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.6
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.5...v0.5.6)
+
+### 🩹 Fixes
+
+- Parser fixed ([8ab2403](https://github.com/algostract/unfiles/commit/8ab2403))
+- Parser normalization ([ccc588b](https://github.com/algostract/unfiles/commit/ccc588b))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.5
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.4...v0.5.5)

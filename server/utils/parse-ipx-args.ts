@@ -1,26 +1,25 @@
 const MODIFIER_SEP = /[&,]/g
 const MODIFIER_VAL_SEP = /[:=_]/
 
+const NORMALIZED_KEYS: Record<string, string> = {
+  f: 'format',
+  w: 'width',
+  h: 'height',
+  s: 'resize',
+  pos: 'position',
+  q: 'quality',
+  a: 'animated',
+}
+
 function safeString(input: string) {
   return JSON.stringify(input).replace(/^"|"$/g, '').replace(/\\+/g, '\\').replace(/\\"/g, '"')
 }
 
-/**
- * Parse a modifiers string (e.g. "w_300,h_200,f_webp")
- * into a Record<string, string>.
- *
- * Examples:
- *  "w_300,h_200" => { w: "300", h: "200" }
- *  "f_auto"      => { f: "auto" }
- *  "_"           => {}
- */
 export default function (modifiersString: string): Record<string, string> {
-  const modifiers: Record<string, string> = Object.create(null)
+  const raw: Record<string, string> = Object.create(null)
 
-  // Same behavior as in your handler:
-  // "_" means "no modifiers"
   if (!modifiersString || modifiersString === '_') {
-    return modifiers
+    return raw
   }
 
   for (const p of modifiersString.split(MODIFIER_SEP)) {
@@ -29,7 +28,22 @@ export default function (modifiersString: string): Record<string, string> {
     const [key, ...values] = p.split(MODIFIER_VAL_SEP)
     if (!key) continue
 
-    modifiers[safeString(key)] = values.map((v) => safeString(v)).join('_')
+    const safeKey = safeString(key)
+    raw[safeKey] = values.map((v) => safeString(v)).join('_')
+  }
+
+  // Build a new object with normalized keys
+  const modifiers: Record<string, string> = Object.create(null)
+
+  for (const [rawKey, value] of Object.entries(raw)) {
+    const normalizedKey = NORMALIZED_KEYS[rawKey] || rawKey
+
+    // Prefer explicit long-form if both exist in input
+    if (normalizedKey in modifiers) {
+      continue
+    }
+
+    modifiers[normalizedKey] = value
   }
 
   return modifiers

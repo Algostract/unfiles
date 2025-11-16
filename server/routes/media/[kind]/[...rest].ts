@@ -134,12 +134,12 @@ export default defineEventHandler(async (event) => {
     const fs = useStorage('fs')
 
     setResponseHeaders(event, {
-      'x-robots-tag': 'noindex, nofollow, noarchive, nosnippet',
+      // 'x-robots-tag': 'noindex, nofollow, noarchive, nosnippet',
       'cache-control': 'public, max-age=31536000, immutable',
     })
     // Pipeline of image
     if (kind === 'image') {
-      const modifiers = await parseIpxArgs(args)
+      const modifiers = parseIpxArgs(args)
 
       const { format } = negotiateImageFormat(event)
       modifiers.format = !modifiers.format || modifiers.format === 'auto' ? format : modifiers.format
@@ -163,6 +163,10 @@ export default defineEventHandler(async (event) => {
           byteLength: metaData.size,
         }
 
+        if (event.method === 'HEAD') {
+          return
+        }
+
         consola.success('✅ Image FS Cache HIT', { cacheKey, bytes: data.byteLength })
         return data.stream
       }
@@ -175,6 +179,10 @@ export default defineEventHandler(async (event) => {
         diskPutFileStream(cachePath, toDisk).then(() => {
           consola.info('💾 Image Saved to FS cache', { cacheKey, bytes: data.byteLength })
         })
+
+        if (event.method === 'HEAD') {
+          return
+        }
 
         consola.success('✅ Image R2 Cache HIT', { cacheKey, bytes: data.byteLength })
         return toClient
@@ -216,7 +224,7 @@ export default defineEventHandler(async (event) => {
       // const cachePath = `./static/${cacheKey}`
     } // Pipeline of video
     else {
-      const modifiers = await parseIpxArgs(args)
+      const modifiers = parseIpxArgs(args)
 
       const { format, codec } = negotiateVideoFormat(event)
       modifiers.format = !modifiers.format || modifiers.format === 'auto' ? format : modifiers.format

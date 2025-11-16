@@ -28,7 +28,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "start": "node --env-file=.env.prod .output/server/index.mjs",
-    "clean": "nuxt cleanup && (cd src-tauri && cargo clean)",
+    "clean": "nuxt cleanup",
     "docker:build": "docker build --build-arg VERSION=dev --build-arg BUILD_TIME=now -t unfiles:dev .",
     "docker:start": "docker run --detach --name unfiles-dev --env-file .env.prod -p 3500:3000 unfiles:dev"
   },

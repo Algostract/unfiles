@@ -1,39 +1,36 @@
-export default async function (args: string) {
-  const mods: Record<string, string | number | boolean> = {}
-  // Normalize separators: support ",", URL-encoded commas, and "&"
-  const normalized = (args || '').replace(/%2C/gi, ',').replace(/&/g, ',').replace(/\s+/g, '') // strip spaces just in case
-  const tokens = normalized.split(',').filter(Boolean)
+const MODIFIER_SEP = /[&,]/g
+const MODIFIER_VAL_SEP = /[:=_]/
 
-  for (const t of tokens) {
-    if (t.startsWith('s_')) {
-      const m = t.slice(2).match(/^(\d+)?x(\d+)?$/)
-      if (m) {
-        const [, w, h] = m
-        if (w) mods.w = w
-        if (h) mods.h = h
-      }
-      continue
-    }
-    const [rawKey, ...rest] = t.split('_')
-    const value = rest.join('_') // keep underscores in values like pos_attention
-    let key = rawKey
+function safeString(input: string) {
+  return JSON.stringify(input).replace(/^"|"$/g, '').replace(/\\+/g, '\\').replace(/\\"/g, '"')
+}
 
-    if (rawKey === 'f') key = 'format'
-    else if (rawKey === 'q' || rawKey === 'quality') key = 'quality'
-    else if (rawKey === 'pos') key = 'position'
-    else if (rawKey === 'b' || rawKey === 'background') key = 'background'
-    else if (rawKey === 'w') key = 'w'
-    else if (rawKey === 'h') key = 'h'
-    else if (rawKey === 'fit') key = 'fit'
-    else if (rawKey === 'dpr') key = 'dpr'
-    else if (rawKey === 'c') key = 'codec'
+/**
+ * Parse a modifiers string (e.g. "w_300,h_200,f_webp")
+ * into a Record<string, string>.
+ *
+ * Examples:
+ *  "w_300,h_200" => { w: "300", h: "200" }
+ *  "f_auto"      => { f: "auto" }
+ *  "_"           => {}
+ */
+export default function (modifiersString: string): Record<string, string> {
+  const modifiers: Record<string, string> = Object.create(null)
 
-    // Booleans (no value) → set to "true"
-    if (!value && ['flip', 'flop', 'grayscale', 'flatten', 'normalize', 'animated', 'negate'].includes(key)) {
-      mods[key] = 'true'
-      continue
-    }
-    if (value) mods[key] = value
+  // Same behavior as in your handler:
+  // "_" means "no modifiers"
+  if (!modifiersString || modifiersString === '_') {
+    return modifiers
   }
-  return mods
+
+  for (const p of modifiersString.split(MODIFIER_SEP)) {
+    if (!p) continue
+
+    const [key, ...values] = p.split(MODIFIER_VAL_SEP)
+    if (!key) continue
+
+    modifiers[safeString(key)] = values.map((v) => safeString(v)).join('_')
+  }
+
+  return modifiers
 }

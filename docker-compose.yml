@@ -1,16 +1,18 @@
-name: 'unfiles-dev'
+# name: 'unfiles-redcatpictures-dev'
+name: 'unfiles-goldfishtalents-dev'
 
 services:
   app:
     build: .
     # restart: on-failure:3
     env_file:
-      - .env.prod
+      # - .env.prod.redcatpictures
+      - .env.prod.goldfishtalents
     volumes:
       - static:/app/static
       - data:/app/.data
     ports:
-      - '3500:3000'
+      - '3600:3000'
     # cpus: '16' # limit to 0.4 CPU
     # mem_limit: 4056M # hard memory cap
     # mem_reservation: 512M # soft memory reservation
@@ -21,7 +23,8 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ./static/red-cat-pictures
+      # device: ./static/red-cat-pictures
+      device: ./static/gold-fish-talents
 
   data:
     driver: local

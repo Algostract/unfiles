@@ -10,16 +10,16 @@ services:
     networks:
       - internal
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.4' # hard cap: half a CPU core
-          memory: 768M # hard cap: 512 MiB
+          cpus: '0.65'
+          memory: 1536M
         reservations:
-          cpus: '0.4' # soft guarantee: quarter core
-          memory: 512M # soft guarantee: 256 MiB
+          cpus: '0.4'
+          memory: 1024M
 
 volumes:
   unfiles_data:

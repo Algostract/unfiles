@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.7
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.6...v0.5.7)
+
+### 🩹 Fixes
+
+- Codec parsing fixed ([c3643ea](https://github.com/algostract/unfiles/commit/c3643ea))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.6
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.5...v0.5.6)

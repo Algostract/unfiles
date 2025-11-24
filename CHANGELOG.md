@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.8
+
+[compare changes](https://github.com/algostract/unfiles/compare/v0.5.7...v0.5.8)
+
+### 🚀 Enhancements
+
+- Add photo and video upload APIs with metadata handling ([ca40f1b](https://github.com/algostract/unfiles/commit/ca40f1b))
+
+### ❤️ Contributors
+
+- Shirsendu Bairagi ([@shba007](https://github.com/shba007))
+
 ## v0.5.7
 
 [compare changes](https://github.com/algostract/unfiles/compare/v0.5.6...v0.5.7)

@@ -97,7 +97,7 @@ function buildCacheKey({ kind, source, args, ext }: { kind: string; source: stri
   return `cache/${kind}/${keyHash}.${ext}`
 }
 
-const syncDrive = defineCachedFunction(
+export const syncDrive = defineCachedFunction(
   async () => {
     consola.log('🔄 Syncing Drive')
     const config = useRuntimeConfig().private
